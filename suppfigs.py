@@ -18,12 +18,12 @@ def linear_decoders(dataroot, saveroot, save_figure=False):
     ''' makes supplementary figure of decoded error vs stimulus angle '''
     d = np.load(os.path.join(saveroot, 'linear_decoder_all_stims.npy'), allow_pickle=True).item()
     E, errors, stims = d['E'], d['errors'], d['stims']
-    
+
     IMG = mainfigs.visual_stimuli(dataroot)
-    
+
     fig = plt.figure(figsize=(6.85,3),facecolor='w',frameon=True, dpi=300)
     yratio = 6.85/3
-    
+
     # different datasets
     inds = [np.arange(0,6,1,int), np.arange(6,9,1,int), np.arange(9,15,1,int), np.arange(15,18,1,int),
             np.arange(18,21,1,int), np.arange(21,24,1,int), np.arange(24,27,1,int)]
@@ -31,7 +31,7 @@ def linear_decoders(dataroot, saveroot, save_figure=False):
     xpos = np.linspace(0.08,.89,7)
     ypos = [.11,.48]
 
-    for k in range(7):    
+    for k in range(7):
         ax = fig.add_axes([xpos[k],ypos[1], .1, .1*yratio])
         j=inds[k][0]
         #for j in range(len(inds[k])):
@@ -39,18 +39,18 @@ def linear_decoders(dataroot, saveroot, save_figure=False):
         ax.text(0.5,1, 'median error \n= %2.2f$^\circ$'%E[j],ha='center', transform=ax.transAxes)
         if k==0:
             ax.set_xlabel(r'stimulus angle ($^\circ$)')
-            ax.set_ylabel(r'decoding error ($^\circ$)') 
+            ax.set_ylabel(r'decoding error ($^\circ$)')
         ax.set_ylim(-25,25)
         ax.set_xticks([0,180,360])
 
         pos = ax.get_position().get_points()
         ax_inset=fig.add_axes([pos[0][0],pos[1][1]+.07,.1,.1*yratio])
-        ax_inset.imshow(IMG[k], cmap=plt.get_cmap('gray'),vmin=0,vmax=1)    
+        ax_inset.imshow(IMG[k], cmap=plt.get_cmap('gray'),vmin=0,vmax=1)
         ax_inset.axis('off')
-        xs,ys=IMG[k].shape    
+        xs,ys=IMG[k].shape
         ac = (0.5,0,.5)
-        if k>3:        
-            plt.annotate('',(ys*.75,xs*.75), (ys*.25,xs*.25), arrowprops=dict(facecolor=ac,edgecolor=ac))    
+        if k>3:
+            plt.annotate('',(ys*.75,xs*.75), (ys*.25,xs*.25), arrowprops=dict(facecolor=ac,edgecolor=ac))
         if k==3:
             plt.text(0, -.15, '100ms',fontweight='bold',size=6, transform = ax_inset.transAxes)
 
@@ -74,14 +74,14 @@ def linear_decoders(dataroot, saveroot, save_figure=False):
             ax.set_ylabel('abs error ($^\circ$)')
             ax.set_xlabel('stimulus angle ($^\circ$)')
             ax.text(-.9,1.2, 'C', size=12, transform=ax.transAxes)
-            ax.text(-.9,3.4, 'B', size=12, transform=ax.transAxes)        
-            ax.text(-.9,4.6, 'A', size=12, transform=ax.transAxes)        
-    
+            ax.text(-.9,3.4, 'B', size=12, transform=ax.transAxes)
+            ax.text(-.9,4.6, 'A', size=12, transform=ax.transAxes)
+
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/supp_error_angles.pdf'))
-    
+
     return fig
 
 def asymptotics(saveroot, save_figure=False):
@@ -96,12 +96,12 @@ def asymptotics(saveroot, save_figure=False):
     npoplin = d['npop']
     Estim = d['E2']
     nstim = d['nstim']
-    
+
     # show neurons for independent
     d = np.load(os.path.join(saveroot, 'independent_decoder_asymp.npy'), allow_pickle=True).item()
     E = d['E']
     npop = d['npop']
-        
+
     berry = [.7,.2,.5]
     grn = [0,.5,0]
 
@@ -141,12 +141,12 @@ def asymptotics(saveroot, save_figure=False):
         ax.tick_params(axis='y')
         ax.fill_between(mux, muy-semy, muy+semy, facecolor=cols[k], alpha=0.5)
         ax.text(-0.5, 1.08, string.ascii_uppercase[k], transform=ax.transAxes, size=12);
-        
+
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/supp_asymp.pdf'))
-    
+
     return fig
 
 def stim_distances(saveroot, save_figure=False):
@@ -166,7 +166,7 @@ def stim_distances(saveroot, save_figure=False):
     ang = np.pi*.2
     xx = x * np.cos(ang) + y * np.sin(ang)
     yy = -x * np.sin(ang) + y * np.cos(ang)
-    ax.scatter(xx,yy, embedding[isort,2], 
+    ax.scatter(xx,yy, embedding[isort,2],
                c=istim[isort], s=1, cmap=plt.get_cmap('twilight_shifted'),alpha=1, depthshade=True)
     cmap = plt.get_cmap('twilight_shifted')
     cmap = cmap(np.linspace(0,1,int(isort.size/2)))
@@ -177,11 +177,11 @@ def stim_distances(saveroot, save_figure=False):
     #            [model.embedding_[isort[i*2],1], model.embedding_[isort[i*2+1],1]],
     #            [model.embedding_[isort[i*2],2], model.embedding_[isort[i*2+1],2]], color=cmap[i], lw=0.5)
                #c=istim[isort], s=0.4, cmap=,alpha=.5, depthshade=True)
-    ax.scatter(embedding[::2,0], embedding[::2,1], -ir, 
+    ax.scatter(embedding[::2,0], embedding[::2,1], -ir,
                s=.4, color=(0.5,.5,.5),alpha=.4)
-    ax.scatter(-ir, embedding[::2,1], embedding[::2,2], 
+    ax.scatter(-ir, embedding[::2,1], embedding[::2,2],
                s=1, color=(0.5,.5,.5),alpha=.4)
-    ax.scatter(embedding[::2,0], -ir, embedding[::2,2], 
+    ax.scatter(embedding[::2,0], -ir, embedding[::2,2],
                s=1, color=(0.5,.5,.5),alpha=.4)
     ax.set_title('ISOMAP embedding of stimuli                   ')
 
@@ -225,12 +225,12 @@ def stim_distances(saveroot, save_figure=False):
     ax.set_ylabel('correlation between neural patterns')
     ax.set_ylim(-.1,.3)
     ax.set_yticks(np.arange(-.1,.4,.1))
-    
+
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/supp_mani.pdf'))
-    
+
     return fig
 
 def pc_errors(saveroot, save_figure=False):
@@ -259,7 +259,7 @@ def pc_errors(saveroot, save_figure=False):
 
     ax = fig.add_axes([.6,.2,bz,bz*yratio])
     for k in range(len(nPC)):
-        ax.errorbar(nPC[k], errors[:,k].mean(axis=0), 
+        ax.errorbar(nPC[k], errors[:,k].mean(axis=0),
                     errors[:,k].std(axis=0)/np.sqrt(6), markersize=20,
                     color=cmap[k], zorder=5)
         ax.scatter(nPC[k], errors[:,k].mean(axis=0), s=3,
@@ -276,12 +276,12 @@ def pc_errors(saveroot, save_figure=False):
     ax.text(-.3,.95,'B',size=12, transform=ax.transAxes)
 
     fig.savefig(os.path.join(saveroot, 'figs/supp_PC_error.pdf'))
-    
+
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/supp_mani.pdf'))
-    
+
     return fig
 
 def population_curves(saveroot, save_figure=False):
@@ -337,12 +337,12 @@ def population_curves(saveroot, save_figure=False):
             if i==1:
                 ac = (0.8,0.2,.8)
                 ang = j*np.pi/2 + 0
-                ax.annotate('',(50+45*np.cos(ang+np.pi),50+45*np.sin(ang)), 
-                               (50+45*np.cos(ang), 50-45*np.sin(ang)), 
-                            arrowprops=dict(arrowstyle='<|-, head_width=0.5, head_length=0.3', 
-                                            facecolor=ac,edgecolor=ac,lw=1))  
+                ax.annotate('',(50+45*np.cos(ang+np.pi),50+45*np.sin(ang)),
+                               (50+45*np.cos(ang), 50-45*np.sin(ang)),
+                            arrowprops=dict(arrowstyle='<|-, head_width=0.5, head_length=0.3',
+                                            facecolor=ac,edgecolor=ac,lw=1))
             ax.set_xlim(0,100)
-            ax.set_ylim(0,100)    
+            ax.set_ylim(0,100)
 
         cmap = plt.get_cmap('twilight_shifted')
         nth = d['avg_tuning'].shape[0]
@@ -384,7 +384,7 @@ def population_curves(saveroot, save_figure=False):
                 x = tbins * 180/np.pi
                 ax.plot(x, tun, color=cmap[k], lw=0.5)
                 ax.fill_between(x, tun-semy, tun+semy, facecolor=cmap[k], alpha=0.5)
-                hwhm[k], angle_plus, angle_minus = tuning.halfwidth_halfmax(tbins, tun, theta_pref[k])    
+                hwhm[k], angle_plus, angle_minus = tuning.halfwidth_halfmax(tbins, tun, theta_pref[k])
             ax.set_xticks([0,180,360])
             if i==0:
                 ax.set_xlabel('stimulus angle ($^\circ$)')
@@ -398,7 +398,7 @@ def population_curves(saveroot, save_figure=False):
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/supp_popcurves.pdf'))
-    
+
     return fig
 
 def discr_nn_rf(saveroot, save_figure=False):
@@ -421,15 +421,15 @@ def discr_nn_rf(saveroot, save_figure=False):
         p = P0.mean(axis=0)
         p = (p + 1 - p[::-1])/2
         ax = fig.add_axes([.12+k*.5, .18, .25, .25*yratio])
-        p75 = utils.discrimination_threshold(p, drange)[0]
-        ax.plot(drange,100*p, color = cols[k])
+        p75,pf = utils.discrimination_threshold(p, drange)
+        ax.plot(drange,100*pf, color = cols[k])
         ax.scatter(drange, 100*p, color = cols[k],s=10)
         ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
         ax.plot([-25,p75], [75,75], '--', color='k')
-        ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')    
+        ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')
         ax.set_xlim(-25,25)
-        ax.set_xticks([-20,20])    
-        ax.set_ylim(-4,103)  
+        ax.set_xticks([-20,20])
+        ax.set_ylim(-4,103)
         ax.set_xlabel('stimulus angle ($^\circ$)')
         ax.set_ylabel('% "choose right"')
         ax.set_title(ttl[k])
@@ -438,7 +438,7 @@ def discr_nn_rf(saveroot, save_figure=False):
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
-        fig.savefig(os.path.join(saveroot, 'figs/supp_nn.pdf'))    
+        fig.savefig(os.path.join(saveroot, 'figs/supp_nn.pdf'))
     return fig
 
 def discr_layers(saveroot, save_figure=False):
@@ -457,15 +457,15 @@ def discr_layers(saveroot, save_figure=False):
         p = P0.mean(axis=0)[:,k]
         p = (p + 1 - p[::-1])/2
         ax = fig.add_axes([.12+k*.5, .18, .25, .25*yratio])
-        p75 = utils.discrimination_threshold(p, drange)[0]
-        ax.plot(drange,100*p, color = cols[k])
+        p75,pf = utils.discrimination_threshold(p, drange)
+        ax.plot(drange,100*pf, color = cols[k])
         ax.scatter(drange, 100*p, color = cols[k],s=10)
         ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
         ax.plot([-25,p75], [75,75], '--', color='k')
-        ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')    
+        ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')
         ax.set_xlim(-25,25)
-        ax.set_xticks([-20,20])    
-        ax.set_ylim(-4,103)  
+        ax.set_xticks([-20,20])
+        ax.set_ylim(-4,103)
         ax.set_xlabel('stimulus angle ($^\circ$)')
         ax.set_ylabel('% "choose right"')
         ax.set_title(ttl[k])
@@ -474,7 +474,7 @@ def discr_layers(saveroot, save_figure=False):
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
-        fig.savefig(os.path.join(saveroot, 'figs/supp_layers.pdf'))    
+        fig.savefig(os.path.join(saveroot, 'figs/supp_layers.pdf'))
     return fig
 
 def discr_chron(saveroot, save_figure=False):
@@ -493,15 +493,15 @@ def discr_chron(saveroot, save_figure=False):
         p = P0.mean(axis=0)[:,k]
         p = (p + 1 - p[::-1])/2
         ax = fig.add_axes([.12+k*.5, .18, .25, .25*yratio])
-        p75 = utils.discrimination_threshold(p, drange)[0]
-        ax.plot(drange,100*p, color = cols[k])
+        p75,pf = utils.discrimination_threshold(p, drange)
+        ax.plot(drange,100*pf, color = cols[k])
         ax.scatter(drange, 100*p, color = cols[k],s=10)
         ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
         ax.plot([-25,p75], [75,75], '--', color='k')
-        ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')    
+        ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')
         ax.set_xlim(-25,25)
-        ax.set_xticks([-20,20])    
-        ax.set_ylim(-4,103)  
+        ax.set_xticks([-20,20])
+        ax.set_ylim(-4,103)
         ax.set_xlabel('stimulus angle ($^\circ$)')
         ax.set_ylabel('% "choose right"')
         ax.set_title(ttl[k])
@@ -510,7 +510,7 @@ def discr_chron(saveroot, save_figure=False):
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
-        fig.savefig(os.path.join(saveroot, 'figs/supp_layers.pdf'))    
+        fig.savefig(os.path.join(saveroot, 'figs/supp_chron.pdf'))
     return fig
 
 def spont_sub(saveroot, save_figure=False):
@@ -520,10 +520,10 @@ def spont_sub(saveroot, save_figure=False):
     yratio = 3/2
 
     d = np.load(os.path.join(saveroot, 'linear_decoder_all_stims.npy'), allow_pickle=True).item()
-    E = d['E']
-
-    d = np.load(os.path.join(saveroot, 'linear_decoder_spont_sub.npy'), allow_pickle=True).item()
     Es = d['E']
+
+    d = np.load(os.path.join(saveroot, 'linear_decoder_with_spont.npy'), allow_pickle=True).item()
+    E = d['E']
 
     # different datasets
     inds = [np.arange(0,6,1,int), np.arange(6,9,1,int), np.arange(9,15,1,int), np.arange(15,18,1,int),
@@ -542,14 +542,9 @@ def spont_sub(saveroot, save_figure=False):
     ax.set_ylabel('decoding error spont subtracted ($^\circ$)')
     ax.set_xlim([0.7,2])
     ax.set_ylim([0.7,2])
-    
+
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
-        fig.savefig(os.path.join(saveroot, 'figs/supp_spont.pdf'))    
+        fig.savefig(os.path.join(saveroot, 'figs/supp_spont.pdf'))
     return fig
-
-    
-
-    
-

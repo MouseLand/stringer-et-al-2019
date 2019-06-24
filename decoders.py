@@ -21,7 +21,7 @@ try:
     import torch
     import torch.nn as nn
     import torch.optim as optim
-    
+
     class TwoLayer(nn.Module):
         def __init__(self, D_in, H, D_out):
             super(TwoLayer, self).__init__()
@@ -56,19 +56,19 @@ def independent_decoder(sresp, istim, itrain, itest, nbase = 10):
     nangle =  2*np.pi
     A, B, D, rez = fit_indep_model(sresp[:, itrain], istim[itrain], nbase)
     apred, logL, B2, Kup = test_indep_model(sresp[:, itest], A, nbase)
-    
+
     # single neuron tuning curves
     ypred = A.T @ B
     # SNR
     SNR = np.var(ypred, axis=1) / np.var(rez, axis=1)
-    
+
     # preferred stimulus for each neuron
     theta_pref = istim[itrain][np.argmax(ypred, axis=1)]
-    
+
     error = istim[itest] - apred
     error = np.remainder(error,nangle)
     error[error > nangle/2] = error[error > nangle/2] - nangle
-    
+
     return apred, error, ypred, logL, SNR, theta_pref
 
 def test_indep_model(X, A, nbase, xcoef = None):
@@ -88,7 +88,7 @@ def test_indep_model(X, A, nbase, xcoef = None):
     for k in range(nodes):
         rez = X - (A.T @ B[:, k])[:, np.newaxis]
         logL[:, k] = -np.mean(rez**2, axis=0)
-  
+
     Kup = utils.upsampling_mat(nodes, int(3200/nodes), nodes/32)
     yup = logL @ Kup.T
     apred = np.argmax(yup, axis=1) / yup.shape[1] * 2 * np.pi
@@ -224,7 +224,7 @@ def vonmises_decoder(sresp, istim, itrain, itest, nangle=2*np.pi, lam=1, dcdtype
             A[:,i] = results[i]
 
     ypred = sresp[:,itest].T @ A
-    
+
     # circular interpolation of ypred
     Kup = utils.upsampling_mat(y.shape[1])
     yup = ypred @ Kup.T
@@ -275,11 +275,11 @@ def rf_discriminator(xtrain, ytrain, xtest, ytest):
     ypred = clf.predict(xtest)
 
     print('accuracy: %2.2f'%(1 - np.abs((ypred>0.5).astype(int) - ytest.astype(int)).mean()))
-    
+
     # convert to -1 / +1
     ychoice = ((ypred>0.5) - 0.5) * 2
     return ychoice
-    
+
 def nn_discriminator(xtrain, ytrain, xtest, ytest):
     D_in  = xtrain.shape[1]
     H = 100
@@ -293,7 +293,7 @@ def nn_discriminator(xtrain, ytrain, xtest, ytest):
     loss_function = nn.BCELoss()
 
     xtrain_gpu  = torch.from_numpy(xtrain.astype(np.float32)).to(device)
-    ytrain_gpu = torch.from_numpy(ytrain.astype(np.float32)).to(device)    
+    ytrain_gpu = torch.from_numpy(ytrain.astype(np.float32)).to(device)
 
     for it in range(int(5e4)):
         output  = model(xtrain_gpu)
@@ -304,7 +304,7 @@ def nn_discriminator(xtrain, ytrain, xtest, ytest):
         optimizer.step()
         #if it%10000==0:
         #    print(it, loss.mean().item())
-            
+
     ypred = model(torch.from_numpy(xtest.astype(np.float32)).to(device)).cpu().detach().numpy()
     print('accuracy: %2.2f'%(1 - np.abs((ypred[:,0]>0.5).astype(int) - ytest.astype(int)).mean()))
 
@@ -312,7 +312,7 @@ def nn_discriminator(xtrain, ytrain, xtest, ytest):
     ychoice = ((ypred[:,0]>0.5) - 0.5) * 2
     return ychoice
 
-def dense_discrimination(fs):
+def dense_discrimination(fs, npc=32):
     ''' discriminate between +/- 2 degrees trials and as a function of # of neurons and stims '''
     nskipstim = 2**np.linspace(0, 10, 21)
     nstim     = np.zeros((len(nskipstim), len(fs)), 'int')
@@ -323,7 +323,7 @@ def dense_discrimination(fs):
     lam = 1
     theta_pref = np.array([np.pi/4])
     dd = 1/10
-    drange2 = np.arange(-2, 2.01, dd*2)    
+    drange2 = np.arange(-2, 2.01, dd*2)
     P = np.zeros((len(nskipstim), len(drange2), len(fs)), np.float32)
     P2 = np.zeros((len(nskip), len(drange2), len(fs)), np.float32)
 
@@ -331,7 +331,7 @@ def dense_discrimination(fs):
         print(os.path.basename(f))
         dat = np.load(f, allow_pickle=True).item()
 
-        sresp, istim, itrain, itest = utils.compile_resp(dat)    
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
         theta0 = istim[itrain,np.newaxis] - theta_pref
         y = theta0
         NN = sresp.shape[0]
@@ -339,11 +339,11 @@ def dense_discrimination(fs):
         X = sresp[:, itrain]
         Xtest = sresp[:, itest]
 
-        nstim[:,t] = (itrain.size/nskipstim).astype('int')   
+        nstim[:,t] = (itrain.size/nskipstim).astype('int')
         y = zscore(y, axis=0) # changed this from axis=0
         np.random.seed(seed = 101)
-        rperm2 = np.random.permutation(itrain.size)    
-        for m in range(len(nskipstim)): 
+        rperm2 = np.random.permutation(itrain.size)
+        for m in range(len(nskipstim)):
             iSS = rperm2[:nstim[m,t]]
             A = fast_ridge(X[:, iSS], y[iSS], lam = 1)
             ypred = (A.T @ Xtest).flatten()
@@ -358,10 +358,10 @@ def dense_discrimination(fs):
                 P[m, j, t] = np.mean(dy[ix]>0)
 
         np.random.seed(seed = 101)
-        npop[:, t] = (NN/nskip).astype('int')        
-        rperm = np.random.permutation(NN)    
+        npop[:, t] = (NN/nskip).astype('int')
+        rperm = np.random.permutation(NN)
         for k in range(len(nskip)):
-            iNN = rperm[:npop[k,t]]        
+            iNN = rperm[:npop[k,t]]
             A = fast_ridge(X[iNN,:], y, lam=1)
             ypred = (A.T @ Xtest[iNN,:]).flatten()
             D = np.zeros((0,))
@@ -375,10 +375,10 @@ def dense_discrimination(fs):
             for j,deg in enumerate(drange2):
                 ix = np.logical_and(D>np.pi/180 * (deg-dd), D<np.pi/180 * (deg+dd))
                 P2[k, j, t] = np.mean(dy[ix]>0)
-                
+
     return npop, nstim, P, P2, drange2
 
-def run_discrimination(fs, decoder='linear'):
+def run_discrimination(fs, decoder='linear', npc=32):
     drange = np.arange(-29,30)
     P = np.zeros((len(fs),len(drange)))
     d75 = np.zeros((len(fs),))
@@ -386,8 +386,8 @@ def run_discrimination(fs, decoder='linear'):
     for t,f in enumerate(fs):
         print(os.path.basename(f))
         dat = np.load(f, allow_pickle=True).item()
-        sresp, istim, itrain, itest = utils.compile_resp(dat)
-        
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
+
         if decoder=='linear':
             D, dy, A = derivative_decoder(istim, sresp, itrain, itest)
             for j,deg in enumerate(drange):
@@ -423,7 +423,7 @@ def run_discrimination(fs, decoder='linear'):
                 for j,deg in enumerate(drange):
                     ix = np.logical_and(atest>np.pi/180 * (deg-.5), atest<np.pi/180 * (deg+.5))
                     P0[j] = np.mean(ychoice[ix]>0)
-                P0 = (P0 + 1 - P0[::-1]) / 2 
+                P0 = (P0 + 1 - P0[::-1]) / 2
                 d750 = utils.discrimination_threshold(P0, drange)[0]
                 print('discrimination threshold %2.2f'%d750)
                 Pk[:,k] = P0
@@ -432,7 +432,7 @@ def run_discrimination(fs, decoder='linear'):
         print('--- discrimination threshold %2.2f'%d75[t])
     return P, d75, drange
 
-def run_decoder(fs, linear=True, npc=0):
+def run_decoder(fs, linear=True, npc=32):
     E = np.zeros((len(fs),))
     errors = []
     stims = []
@@ -456,10 +456,10 @@ def run_decoder(fs, linear=True, npc=0):
         theta_prefs.append(theta_pref)
         E[t] = np.median(np.abs(error)) * 180/np.pi
         print(os.path.basename(f), E[t])
-        
+
     return E, errors, stims, snrs, theta_prefs
 
-def runspeed_discrimination(fs, all_running):
+def runspeed_discrimination(fs, all_running, npc=32):
     ntesthalf = 1000
     drange = np.arange(-29, 30, 1)
     P0 = np.zeros((len(fs), len(drange), 2), np.float32)
@@ -468,7 +468,7 @@ def runspeed_discrimination(fs, all_running):
         print(os.path.basename(f))
         dat = np.load(f, allow_pickle=True).item()
 
-        sresp, istim, itrain, itest = utils.compile_resp(dat)
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
 
         rperm = np.random.permutation(istim.size)
         runsp = all_running[t]
@@ -480,23 +480,23 @@ def runspeed_discrimination(fs, all_running):
         itrain = np.ones(istim.size, 'Bool')
         itrain[itest] = False
 
-        D, dy, A = derivative_decoder(istim, sresp, itrain[::1], itest1, lam = 1)    
+        D, dy, A = derivative_decoder(istim, sresp, itrain[::1], itest1, lam = 1)
         for j,deg in enumerate(drange):
             ix = np.logical_and(D>np.pi/180 * (deg-.5), D<np.pi/180 * (deg+.5))
             P0[t,j,0] = np.mean(dy[ix]>0)
 
-        D, dy, A = derivative_decoder(istim, sresp, itrain[::1], itest2, lam = 1)    
+        D, dy, A = derivative_decoder(istim, sresp, itrain[::1], itest2, lam = 1)
         for j,deg in enumerate(drange):
             ix = np.logical_and(D>np.pi/180 * (deg-.5), D<np.pi/180 * (deg+.5))
             P0[t,j,1] = np.mean(dy[ix]>0)
         d75[t,0] = utils.discrimination_threshold(P0[t,:,0], drange)[0]
         d75[t,1] = utils.discrimination_threshold(P0[t,:,1], drange)[0]
         print('--- discrimination threshold passive %2.2f, running %2.2f'%(d75[t,0], d75[t,1]))
-        
+
     return P0, d75, drange
 
 
-def layer_discrimination(fs, all_depths):
+def layer_discrimination(fs, all_depths, npc=32):
     drange = np.arange(-29, 30, 1)
     P0 = np.zeros((len(fs), len(drange), 2), np.float32)
     d75 = np.zeros((len(fs), 2), np.float32)
@@ -506,7 +506,7 @@ def layer_discrimination(fs, all_depths):
         dat = np.load(f, allow_pickle=True).item()
         depths = all_depths[t]
 
-        sresp, istim, itrain, itest = utils.compile_resp(dat)
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
         nstim = sresp.shape[1]
 
         upper = depths < depths.min() + 100
@@ -522,10 +522,10 @@ def layer_discrimination(fs, all_depths):
         d75[t,0] = utils.discrimination_threshold(P0[t,:,0], drange)[0]
         d75[t,1] = utils.discrimination_threshold(P0[t,:,1], drange)[0]
         print('--- discrimination threshold L2/3 %2.2f, L4 %2.2f'%(d75[t,0], d75[t,1]))
-        
+
     return P0, d75, drange
 
-def chron_discrimination(fs, all_depths):
+def chron_discrimination(fs, all_depths, npc=32):
     drange = np.arange(-29, 30, 1)
     P0 = np.zeros((len(fs), len(drange), 2), np.float32)
     d75 = np.zeros((len(fs), 2), np.float32)
@@ -533,8 +533,8 @@ def chron_discrimination(fs, all_depths):
     for t,f in enumerate(fs):
         print(os.path.basename(f))
         dat = np.load(f, allow_pickle=True).item()
-        
-        sresp, istim, itrain, itest = utils.compile_resp(dat)
+
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
         nstim = sresp.shape[1]
 
         D0, dy0, A = derivative_decoder(istim, sresp, itrain, itest, lam = 1)
@@ -555,10 +555,10 @@ def chron_discrimination(fs, all_depths):
         d75[t,0] = utils.discrimination_threshold(P0[t,:,0], drange)[0]
         d75[t,1] = utils.discrimination_threshold(P0[t,:,1], drange)[0]
         print('--- discrimination threshold original %2.2f, chronological %2.2f'%(d75[t,0], d75[t,1]))
-        
+
     return P0, d75, drange
 
-def asymptotics(fs, linear=True):
+def asymptotics(fs, linear=True, npc=32):
     nskip = 2**np.linspace(0, 10, 21)
     nskipstim = 2**np.linspace(0, 10, 21)
     E = np.zeros((len(nskip),2, len(fs)))
@@ -573,7 +573,7 @@ def asymptotics(fs, linear=True):
         print('asymp for: ', os.path.basename(f))
         dat = np.load(f, allow_pickle=True).item()
 
-        sresp, istim, itrain, itest = utils.compile_resp(dat)
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
         ypos = np.array([dat['stat'][j]['med'][0] for j in range(len(dat['stat']))])
 
         # split neurons for decoder into strips (no Z overlap between two sets)
@@ -583,14 +583,14 @@ def asymptotics(fs, linear=True):
         npop[:, t] = (NN/nskip).astype('int')
 
         np.random.seed(seed = 101)
-        rperm = np.random.permutation(NN)    
+        rperm = np.random.permutation(NN)
         for k in range(len(nskip)):
             iNN = rperm[:npop[k,t]]
             if linear:
                 error = vonmises_decoder(sresp[iNN], istim, itrain, itest)[1]
             else:
                 error = independent_decoder(sresp[iNN, :], istim, itrain, itest)[1]
-                
+
             E[k,0,t] = np.median(np.abs(error)) * 180/np.pi
 
             n1, n2 = utils.stripe_split(ypos[iNN], nstrips)
@@ -600,27 +600,27 @@ def asymptotics(fs, linear=True):
             else:
                 err1 = independent_decoder(sresp[iNN[n1]], istim, itrain, itest)[1]
                 err2 = independent_decoder(sresp[iNN[n2]], istim, itrain, itest)[1]
-                
+
             E[k,1,t] = np.abs(np.median(err1*err2))**.5 * 180/np.pi
 
             ccE[k,0,t] = np.corrcoef(err1, err2)[0,1]
             ccE[k,1,t] = spearmanr(err1, err2)[0]
             nsplit[k,t] = len(n1)
 
-        nstim[:,t] = (itrain.size/nskipstim).astype('int')    
+        nstim[:,t] = (itrain.size/nskipstim).astype('int')
         np.random.seed(seed = 101)
-        rperm = np.random.permutation(itrain.size)    
-        for k in range(len(nskipstim)):    
+        rperm = np.random.permutation(itrain.size)
+        for k in range(len(nskipstim)):
             iSS = rperm[:nstim[k,t]]
             if linear:
                 error = vonmises_decoder(sresp, istim, itrain[iSS], itest)[1]
             else:
                 error = independent_decoder(sresp, istim, itrain[iSS], itest)[1]
             E2[k, t] = np.median(np.abs(error)) * 180/np.pi
-    
+
     return E, ccE, nsplit, npop, nstim, E2
 
-def pc_decoding(fs, nPC):
+def pc_decoding(fs, nPC, npc=32):
     ''' linearly decode from PCs of data '''
 
     errors = np.zeros((len(fs), len(nPC)))
@@ -628,7 +628,7 @@ def pc_decoding(fs, nPC):
         print(os.path.basename(f))
         dat = np.load(f, allow_pickle=True).item()
 
-        sresp, istim, itrain, itest = utils.compile_resp(dat)    
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
 
         pca = PCA(n_components=nPC[-1]).fit(sresp)
         u = pca.components_.T

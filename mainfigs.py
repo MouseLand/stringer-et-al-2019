@@ -16,7 +16,7 @@ rcParams['axes.spines.right'] = False
 
 def visual_stimuli(dataroot, nsc=5):
     IMG = []
-    for k in range(7):    
+    for k in range(7):
         if k==1:
             xx,yy = np.meshgrid(np.arange(0,640*nsc)/(60*nsc), np.arange(0,480*nsc)/(60*nsc))
             gratings = np.cos(xx*np.cos(np.pi/4+.1) + yy*np.sin(np.pi/4+.1))
@@ -59,19 +59,19 @@ def visual_stimuli(dataroot, nsc=5):
             gratings[gratings>0]=.52
             gratings[gratings<0]=.48
             gratings += .25*np.random.randn(img.shape[0],img.shape[1])
-            img = gratings      
+            img = gratings
             IMG.append(img)
-            
+
     return IMG
 
 def draw_neural_net(ax, left, right, bottom, top, layer_sizes, colors):
     ''' modified from @craffel (thanks!) (https://gist.github.com/craffel/2d727968c3aaebd10359)
     Draw a neural network cartoon using matplotilb.
-    
+
     :usage:
         >>> fig = plt.figure(figsize=(12, 12))
         >>> draw_neural_net(fig.gca(), .1, .9, .1, .9, [4, 7, 2])
-    
+
     :parameters:
         - ax : matplotlib.axes.AxesSubplot
             The axes on which to plot the cartoon (get e.g. by plt.gca())
@@ -106,10 +106,10 @@ def draw_neural_net(ax, left, right, bottom, top, layer_sizes, colors):
         for m in range(layer_size_a):
             for o in range(layer_size_b):
                 line = plt.Line2D([n*h_spacing + left, (n + 1)*h_spacing + left],
-                                  [layer_top_a - m*v_spacing[n], layer_top_b - o*v_spacing[n+1]], 
+                                  [layer_top_a - m*v_spacing[n], layer_top_b - o*v_spacing[n+1]],
                                   c=(0.5,0.5,0.5), linewidth=0.5)
                 ax.add_artist(line)
-                
+
 def fig1(dataroot, saveroot, save_figure=False):
     rc('font', **{'size': 6})#, 'family':'sans-serif'})#,'sans-serif':['Helvetica']})
 
@@ -117,7 +117,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     dat=np.load(os.path.join(dataroot, 'spks_gratings_static_TX40_2019_05_02_1.npy')).item()
     stimtimes,stat,ops = dat['stimtimes'],dat['stat'],dat['ops_plane6']
     sresp, istim, itrain, itest = utils.compile_resp(dat)
-    
+
     nbase = 10
     A, B, D, rez         = decoders.fit_indep_model(sresp[:, itrain], istim[itrain], nbase)
     apred1, logL, B2, Kup = decoders.test_indep_model(sresp[:, itest], A, nbase)
@@ -142,9 +142,9 @@ def fig1(dataroot, saveroot, save_figure=False):
     stimtrace = stimtrace[trange[0]:trange[-1]]
 
     isort = np.argsort(btheta)
-    
+
     dsmooth =zscore(gaussian_filter1d((spks_norm[isort,trange[0]:trange[-1]]),50,axis=0), axis=1) # 1430:1850
-    
+
     fig = plt.figure(figsize=(6.85,4.5),facecolor='w',frameon=True, dpi=300)
     yratio = 6.85/4.5
 
@@ -280,7 +280,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_ylim(-3,13-3)
-    ax.set_xticks([0, 180, 360])  
+    ax.set_xticks([0, 180, 360])
     ax.set_xlabel('stimulus angle ($^\circ$)')
     ax.set_ylabel('response\n(z-scored)')
     ax.text(-1, .88, string.ascii_uppercase[5], transform=ax.transAxes, size=12)
@@ -290,7 +290,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     nb=plt.hist(SNR,100, color=(0.5,.5,.5))
     merror = np.mean(SNR)
     ax.scatter(merror, nb[0].max()*.9, marker='v',color='k')
-    plt.text(merror+.1, nb[0].max()*1.05, '%2.2f'%merror, 
+    plt.text(merror+.1, nb[0].max()*1.05, '%2.2f'%merror,
              horizontalalignment='center',fontsize=6,fontweight='bold')
     ax.set_xlim([0,1.])
     ax.set_xlabel('SNR')
@@ -309,17 +309,17 @@ def fig1(dataroot, saveroot, save_figure=False):
     ax.axis('off')
     ax.text(-0.04, 1.08, string.ascii_uppercase[7], transform=ax.transAxes, size=12)
     ax.text(-0.01, 1.08, 'Coordination of decoding errors between neurons (hypotheses)', transform=ax.transAxes, size=8)
-    
-    
+
+
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/fig1.pdf'))
-    
-    
+
+
     return fig
 
-                
+
 def fig2(dataroot, saveroot, save_figure=False):
     rc('font', **{'size': 6})#, 'family':'sans-serif'})#,'sans-serif':['Helvetica']})
 
@@ -380,8 +380,8 @@ def fig2(dataroot, saveroot, save_figure=False):
     ind_trial = 888
     itest_trial = (itest==ind_trial).nonzero()[0][0]
     print(itest_trial)
-    
-    nrez = -(sresp[:, ind_trial][:, np.newaxis] - Apred)**2 
+
+    nrez = -(sresp[:, ind_trial][:, np.newaxis] - Apred)**2
     print(nrez.shape)
     nodes = 32
     Kup = utils.upsampling_mat(nodes, int(3200/nodes), nodes/32)
@@ -418,15 +418,15 @@ def fig2(dataroot, saveroot, save_figure=False):
         istimsort = np.argsort(istim[itest])
         ax.scatter(istim*180/np.pi, sresp[iN[k], :], s=.5, color=(0.5,0.5,0.5), alpha=0.1)
         ypredNeur = A[:, iN[k]]  @ B
-        ax.plot(istim[itrain[isort]]*180/np.pi, ypredNeur[isort], color='k', lw=0.5)    
+        ax.plot(istim[itrain[isort]]*180/np.pi, ypredNeur[isort], color='k', lw=0.5)
         ax.scatter(istim[ind_trial]*180/np.pi, sresp[iN[k], ind_trial], marker='x', s=20, color=col0)#facecolors='none',
         ax.set_ylim(-3,13-3)
-        ax.set_xticks([0, 180, 360])    
+        ax.set_xticks([0, 180, 360])
         if k==2:
             ax.set_xlabel('stimulus angle ($^\circ$)')
         plt.text(10, 10, 'SNR = %2.2f'%(SNR[iN[k]]),size=6)
         if k==0:
-            ax.set_ylabel('response\n(z-score)')    
+            ax.set_ylabel('response\n(z-score)')
             ax.text(-.3,1.35,'Independent decoder',size=8, transform=ax.transAxes, color=berry)
             ax.text(-0.6, 1.35, string.ascii_uppercase[0], transform=ax.transAxes, size=12)
 
@@ -466,7 +466,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     xpos[2]-=0.04
 
     ax = fig.add_axes([xpos[2], ypos[0], bz, bz*yratio])
-    ax.scatter(istim[itest]* 180/np.pi, apred * 180/np.pi, marker='.', alpha=0.5, 
+    ax.scatter(istim[itest]* 180/np.pi, apred * 180/np.pi, marker='.', alpha=0.5,
              s=.1, color = berry)#, alpha=0.1)
     #ax.plot(istim[itest]* 180/np.pi, apredLin * 180/np.pi, marker=',', lw=0, color=berry)
     ax.set_xlabel(r'true angle ($^\circ$)')
@@ -493,6 +493,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     axins.hist(E[0,0,:], 3, color=berry)
     axins.set_xlabel('median error')
     axins.set_ylabel('recordings')
+    axins.set_yticks([0,3])
 
     ax = fig.add_axes([xpos[2]+bz+.01, ypos[1]+bz*.82, .03, bz*.55])
     plt.scatter([0, 0, 0, 0], [1, 2, 3, 4], color=col2, s = 10)
@@ -545,7 +546,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     #ax.scatter(E[0,0,:nstatic], ccE[0,1,:nstatic], marker='+', s=10, color = 'k', lw=0.7)
 
     axins = fig.add_axes([xpos[3]+bz*1, ypos[1]+bz*.38, .06,.06*yratio])
-    axins.hist(ccE[0,1,:], 3, color=berry)
+    axins.hist(ccE[0,1,:], 4, color=berry)
     axins.set_yticks([0,3])
     axins.set_xticks([.5,1])
     axins.set_xlabel(r'$R_s$')
@@ -567,9 +568,9 @@ def fig2(dataroot, saveroot, save_figure=False):
     #ax.set_aspect('equal')
     #ax.set_xlim(0.07, 1)
     plt.text(-.16,1.12,'Linear decoder',verticalalignment='center', size=8, color=(0,.5,0))
-    plt.text(-.05,1.02,'neurons',verticalalignment='center', size=6)#rotation=90, 
-    plt.text(.37,1.02, 'super-neurons',verticalalignment='center', size=6)#rotation=90, 
-    plt.text(.2,.5,'   linear\nregression',verticalalignment='center', size=8, 
+    plt.text(-.05,1.02,'neurons',verticalalignment='center', size=6)#rotation=90,
+    plt.text(.37,1.02, 'super-neurons',verticalalignment='center', size=6)#rotation=90,
+    plt.text(.2,.5,'   linear\nregression',verticalalignment='center', size=8,
               fontweight='bold',rotation=270)
     ax.text(-.3, 1.08, string.ascii_uppercase[5], transform=ax.transAxes, size=12)
 
@@ -590,7 +591,7 @@ def fig2(dataroot, saveroot, save_figure=False):
         y = vm[n,:]-n*1.3
         ax.plot(theta, y, color=cmap[n], linewidth=1)
         vc = np.argmin(np.abs(v0[n] - np.linspace(0,2*np.pi,ypredLin.shape[1]+1)[:-1]))
-        y = ypredLin[:,vc] 
+        y = ypredLin[:,vc]
         y -= y.min()
         y /= y.max()
         y -= n*1.3
@@ -625,9 +626,9 @@ def fig2(dataroot, saveroot, save_figure=False):
     ax.axis('off')
 
     ax = fig.add_axes([xpos[2], ypos[2], bz, bz*yratio])
-    ax.scatter(istim[itest]* 180/np.pi, apredLin * 180/np.pi, marker='.', alpha=0.5, 
+    ax.scatter(istim[itest]* 180/np.pi, apredLin * 180/np.pi, marker='.', alpha=0.5,
              s=.1, color = grn)
-    #ax.plot(istim[itest]* 180/np.pi, apredLin * 180/np.pi, marker=',', lw=0, color=grn)#, alpha=0.2, 
+    #ax.plot(istim[itest]* 180/np.pi, apredLin * 180/np.pi, marker=',', lw=0, color=grn)#, alpha=0.2,
              #s=1, color = grn)
     plt.xlabel(r'true angle ($^\circ$)')
     plt.ylabel(r'decoded angle ($^\circ$)')
@@ -650,16 +651,18 @@ def fig2(dataroot, saveroot, save_figure=False):
     axins.hist(Elin[0,0,:], 3, color=grn)
     axins.set_xlabel('median error')
     axins.set_ylabel('recordings')
-    
+    axins.set_yticks([0,3])
+
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/fig2.pdf'))
-    
+
     return fig
 
 def fig3(dataroot, saveroot, save_figure=False):
-    rc('font', **{'size': 12})#, 'family':'sans-serif'})#,'sans-serif':['Helvetica']})
+    rc('font', **{'size': 12})#, 'family':'sans-serif'})
+    IMG=visual_stimuli(dataroot)
 
     d = np.load(os.path.join(saveroot, 'linear_discrimination.npy'), allow_pickle=True).item()
     P = d['P']
@@ -696,12 +699,10 @@ def fig3(dataroot, saveroot, save_figure=False):
     pn75 = [utils.discrimination_threshold(d['Pneur'][i,:,j], drange2)[0]
             for i in range(21) for j in range(5)]
     pn75 = np.reshape(np.array(pn75), (21, 5))
-    
+
     ps75 = [utils.discrimination_threshold(d['Pstim'][i,:,j], drange2)[0]
             for i in range(21) for j in range(5)]
     ps75 = np.reshape(np.array(ps75), (21, 5))
-
-    IMG = visual_stimuli(dataroot)
 
     my_green = [0, .5 , 0]
     fig = plt.figure(figsize=(15,10),facecolor='w', dpi = 300)
@@ -709,38 +710,36 @@ def fig3(dataroot, saveroot, save_figure=False):
     iplot=0
 
     from skimage.transform import rotate
-    ax = fig.add_axes([.03, 1/3 + .7 * 2/3, .1, .25 * 2/3])
+    ax = fig.add_axes([.03, 1/3 + .7 * 2/3-.02, .1, .25 * 2/3])
     xx,yy = np.meshgrid(np.arange(0,2000)/60, np.arange(0,2000)/60)
     gratings = np.cos(xx*np.cos(np.pi/4 - np.pi/180) + yy*np.sin(np.pi/4 - np.pi/180))
     ax.imshow(np.sign(gratings), cmap=plt.get_cmap('gray'))
     ax.axis('off')
     ax.text(-.3, .5, '44$^\circ$',fontsize=12, transform=ax.transAxes)
     ax.text(0.15,1.2,'Angle > 45$^\circ$?', transform=ax.transAxes, fontsize=14)
-    ax.text(-.45, 1.27, string.ascii_uppercase[iplot], transform=ax.transAxes, 
+    ax.text(-.2, 1.19, string.ascii_uppercase[iplot], transform=ax.transAxes,
                     size=24)
     iplot+=1
     #ax.set_position(ax.get_position().bounds + np.array([-.05, -.05,0.1,0.1]))
 
-    ax = fig.add_axes([.03, .6, .1, .25* 2/3])
+    ax = fig.add_axes([.03, .6-.02, .1, .25* 2/3])
     gratings = np.cos(xx*np.cos(1*np.pi/180 + np.pi/4) + yy*np.sin(1*np.pi/180 + np.pi/4))
     ax.imshow(np.sign(gratings), cmap=plt.get_cmap('gray'))
     ax.axis('off')
     ax.text(-.3, .5, '46$^\circ$',fontsize=12, transform=ax.transAxes)
 
-    ax = fig.add_axes([.03, 1/3 + .1* 2/3, .1, .25* 2/3])
+    ax = fig.add_axes([.03, 1/3 + .1* 2/3-0.02, .1, .25* 2/3])
     gratings = np.cos(xx*np.cos(5*np.pi/180 + np.pi/4) + yy*np.sin(5*np.pi/180 + np.pi/4))
     #ratings[~icirc]=1
     ax.imshow(np.sign(gratings), cmap=plt.get_cmap('gray'))
     ax.axis('off')
     ax.text(-.3, .5, '50$^\circ$',fontsize=12, transform=ax.transAxes)
 
-
-
-    ax = fig.add_axes([.2325, .76, .24 * 2/3, .24])
+    ax = fig.add_axes([.2325, .73, .24 * 2/3, .24])
     pn=Pavg[0,:]
     semy=Psd
-    p75 = np.interp(0.75,pn,drange)
-    ax.plot(drange,100*pn, color = my_green)
+    p75,pf = utils.discrimination_threshold(pn, drange)
+    ax.plot(drange,100*pf, color = my_green)
     ax.scatter(drange, 100*pn, color = my_green,s=10)
     ax.fill_between(drange, 100*(pn-semy), 100*(pn+semy), facecolor=my_green, alpha=0.5)
 
@@ -770,19 +769,18 @@ def fig3(dataroot, saveroot, save_figure=False):
     ax.set_ylabel('% "choose right"',fontsize=14)
     ax.set_xlabel('angle difference  ($^\circ$)',fontsize=14)
     #ax.set_position(ax.get_position().bounds - np.array([.13, -.2, 0.04, 0.04]))
-    ax.text(-.35, 1.0, string.ascii_uppercase[iplot], transform=ax.transAxes, 
+    ax.text(-.35, 1.0, string.ascii_uppercase[iplot], transform=ax.transAxes,
                     size=24)
     #ax.set_title('Orientation discrimination',fontsize=16)
 
-    ax = fig.add_axes([.2325, 1/3 + .1, .24*2/3, .24])
-    ax.plot(drange2,100*Pneur[0], color = [.5, .3, .1])
+    ax = fig.add_axes([.2325, 1/3 + .1-.02, .24*2/3, .24])
+    p75,pf = utils.discrimination_threshold(Pneur[0], drange2)
+    ax.plot(drange2,100*pf, color = [.5, .3, .1])
     ax.scatter(drange2, 100*Pneur[0], color = [.5, .3, .1],s=10)
-    ax.fill_between(drange2, 100*(Pneur[0]-Pnsd[0]), 100*(Pneur[0]+Pnsd[0]), facecolor=[.5, .3, .1], alpha=0.5)
-
+    #ax.fill_between(drange2, 100*(Pneur[0]-Pnsd.mean()), 100*(Pneur[0]+Pnsd[0]), facecolor=[.5, .3, .1], alpha=0.5)
     ax.set_ylabel('% "choose right"',fontsize=14)
     plt.text(.3, .85, 'neurometric \n 1,000 trials/deg', transform=(plt.gca()).transAxes, color = [.5, .3, .1],fontsize=13,
             horizontalalignment='center')
-    p75 = np.interp(0.75,Pneur[0],drange2)
     ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
     ax.plot([-2,p75], [75,75], '--', color='k')
     ax.text(p75+.1, 10, '%2.2f$^\circ$'%p75, fontweight='bold')
@@ -794,7 +792,7 @@ def fig3(dataroot, saveroot, save_figure=False):
     ax.text(-.35, 1.05, string.ascii_uppercase[iplot], transform=ax.transAxes,  size=24)
 
 
-    ax = fig.add_axes([.49, .805, .1, .18])
+    ax = fig.add_axes([.49, .78, .1, .18])
     iplot+=1
     mux = ps75.mean(axis=1)
     sdx = ps75.std(axis=1)/5**.5
@@ -811,7 +809,7 @@ def fig3(dataroot, saveroot, save_figure=False):
     ax.text(-.5, 1.075, string.ascii_uppercase[iplot], transform=ax.transAxes,  size=24)
     ax.text(-.25, 1.075, 'Asymptotics', transform=ax.transAxes,  size=14)
 
-    ax = fig.add_axes([.605, .805, .1, .18])
+    ax = fig.add_axes([.605, .78, .1, .18])
     mux = pn75.mean(axis=1)
     sdx = pn75.std(axis=1)/5**.5
     nnx = d['npop'].mean(axis=-1)
@@ -823,17 +821,18 @@ def fig3(dataroot, saveroot, save_figure=False):
     ax.set_ylim([0, 2])
     #ax.set_xlim([10, 1000])
 
-    ax = fig.add_axes([.49, 1/3 + .1, .1, 2/3 * .25])
+
+    ax = fig.add_axes([.49, 1/3 + .08, .1, 2/3 * .25])
     iplot+=1
     pn=Prun[:, 0]
-    p75 = np.interp(0.75,pn,drange)
-    ax.plot(drange,100*pn, color = my_green)
+    p75,pf = utils.discrimination_threshold(pn, drange)
+    ax.plot(drange,100*pf, color = my_green)
     ax.scatter(drange, 100*pn, color = my_green,s=10)
     ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
     ax.plot([-25,p75], [75,75], '--', color='k')
-    ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')    
+    ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')
     ax.set_xlim(-25,25)
-    ax.set_ylim(-1,100)   
+    ax.set_ylim(-1,101)
     ax.set_ylabel('% "choose right"',fontsize=14)
     ax.set_xlabel('angle difference  ($^\circ$)',fontsize=14)
     ax.text(-.5, 1.525, string.ascii_uppercase[iplot], transform=ax.transAxes,  size=24)
@@ -844,29 +843,29 @@ def fig3(dataroot, saveroot, save_figure=False):
     ax_inset.imshow(runfig, cmap=plt.get_cmap('gray'),vmin=0,vmax=1)
     ax_inset.axis('off')
 
-    ax = fig.add_axes([.605, 1/3 + .1, .1, 2/3 * .25])
+    ax = fig.add_axes([.605, 1/3 + .08, .1, 2/3 * .25])
     pn=Prun[:, 1]
-    p75 = np.interp(0.75,pn,drange)
-    ax.plot(drange,100*pn, color = my_green)
+    p75,pf = utils.discrimination_threshold(pn, drange)
+    ax.plot(drange,100*pf, color = my_green)
     ax.scatter(drange, 100*pn, color = my_green,s=10)
     ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
     ax.plot([-25,p75], [75,75], '--', color='k')
-    ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')    
+    ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')
     ax.set_xlim(-25,25)
-    ax.set_ylim(-1,100)   
+    ax.set_ylim(-1,101)
     ax.set_yticks([])
     pos = ax.get_position().get_points()
     ax_inset=fig.add_axes([pos[0][0],pos[1][1] - .01,.1,.1])
-    runfig=plt.imread(os.path.join(dataroot, 'runmouse.png'))[:,:,0]
+    runfig=plt.imread(os.path.join(dataroot,'runmouse.png'))[:,:,0]
     ax_inset.imshow(runfig, cmap=plt.get_cmap('gray'),vmin=0,vmax=1)
     ax_inset.axis('off')
 
 
-    x0 = .03
+    x0 = .05
     ipermute = [0, 2, 3, 4, 5, 1]
-    for t in range(6):    
+    for t in range(6):
         k = ipermute[t]
-        ax = fig.add_axes([x0, .05, .1, .15])    
+        ax = fig.add_axes([x0, .05, .1, .15])
         if t==0:
             iplot+=1
             ax.set_ylabel('% "choose right"',fontsize=14)
@@ -875,29 +874,29 @@ def fig3(dataroot, saveroot, save_figure=False):
             ax.text(-.25, 1.9, 'Other stimuli (10 trials/deg)', transform=ax.transAxes,  size=14)
             ax.set_yticks([0,25,50,75,100])
         else:
-            ax.set_yticks([])        
+            ax.set_yticks([])
 
         pn=Pavg[k+1,:]
-        p75 = np.interp(0.75,pn,drange)
-        ax.plot(drange,100*pn, color = my_green)
+        p75,pf = utils.discrimination_threshold(pn,drange)
+        ax.plot(drange,100*pf, color = my_green)
         ax.scatter(drange, 100*pn, color = my_green,s=10)
         ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
         ax.plot([-25,p75], [75,75], '--', color='k')
-        ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')    
+        ax.text(p75+5, 25, '%2.2f$^\circ$'%p75, fontweight='bold')
         ax.set_xlim(-25,25)
-        ax.set_xticks([-20,20])    
-        ax.set_ylim(-1,100)   
+        ax.set_xticks([-20,20])
+        ax.set_ylim(-1,101)
         x0 += .1 + .015
 
         pos = ax.get_position().get_points()
         ax_inset=fig.add_axes([pos[0][0],pos[1][1]+.02,.1,.1])
-        ax_inset.imshow(IMG[k], cmap=plt.get_cmap('gray'),vmin=0,vmax=1)    
+        ax_inset.imshow(IMG[k+1], cmap=plt.get_cmap('gray'),vmin=0,vmax=1)
         ax_inset.axis('off')
 
-        xs,ys=IMG[k].shape    
+        xs,ys=IMG[k+1].shape
         ac = (0.5,0,.5)
-        if k>2:        
-            plt.annotate('',(ys*.75,xs*.75), (ys*.25,xs*.25), arrowprops=dict(facecolor=ac,edgecolor=ac))    
+        if k>2:
+            plt.annotate('',(ys*.75,xs*.75), (ys*.25,xs*.25), arrowprops=dict(facecolor=ac,edgecolor=ac))
         if k==2:
             plt.text(0, -.15, '100ms',fontweight='bold',size=12, transform = ax_inset.transAxes)
 
@@ -905,7 +904,7 @@ def fig3(dataroot, saveroot, save_figure=False):
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/fig3.pdf'), bbox_inches='tight')
-    
+
     return fig
 
 def fig4(dataroot, saveroot, save_figure=False):
@@ -917,10 +916,10 @@ def fig4(dataroot, saveroot, save_figure=False):
     nstim32, perf32, perf, nstim = d['nstim32'], d['perf32'], d['perf'], d['nstim']
     perf = np.squeeze(perf)
     nstim = np.squeeze(nstim)
-    
+
     d = np.load(os.path.join(saveroot, 'weak_learn.npy'), allow_pickle=True).item()
     P, drange, ccN = d['P'], d['drange'], d['ccN'][0]
-    
+
     iplot=0
     ax = fig.add_axes([.03, .6, .25, .25 * 3/2 * 60/75])
 
@@ -930,12 +929,12 @@ def fig4(dataroot, saveroot, save_figure=False):
     learn_fig = plt.imread(os.path.join(dataroot, 'learning.png'))
     ax.imshow(learn_fig)
     ax.axis('off')
-    ax.text(-.1, 1.1, string.ascii_uppercase[iplot], transform=ax.transAxes, 
+    ax.text(-.1, 1.1, string.ascii_uppercase[iplot], transform=ax.transAxes,
                     size=24)
     ax.text(.0, 1.1, 'Perceptron learners', transform=ax.transAxes, fontsize=14)
 
     ax.text(.1, -.1, 'not trial-by-trial', transform=ax.transAxes, fontsize=14)
-    ax.text(.325, -.2, 'linear decoder', color = cols[0], transform=ax.transAxes) 
+    ax.text(.325, -.2, 'linear decoder', color = cols[0], transform=ax.transAxes)
 
     iplot += 1
     ax.text(1.0, 1.1, string.ascii_uppercase[iplot], transform=ax.transAxes, size=24)
@@ -1029,7 +1028,7 @@ def fig4(dataroot, saveroot, save_figure=False):
     plt.plot(x1[k1, 0], x1[k1, 1], '*', color=[.5, .0, 0], markersize = 20)
     plt.plot(x2[k2, 0], x2[k2, 1], '*', color=[.0, .0, .5], markersize = 20)
     plt.plot([x1[k1, 0], x2[k2, 0]], [x1[k1, 1], x2[k2, 1]], '--', color='black', linewidth=2)
-    rat = (x1[k1, 1] - x2[k2, 1]) / (x1[k1, 0] - x2[k2, 0]) 
+    rat = (x1[k1, 1] - x2[k2, 1]) / (x1[k1, 0] - x2[k2, 0])
     plt.plot([-3, 3], [3/rat, -3 /rat], '-', color='black')
     plt.xlim([-3,3])
     plt.ylim([-3,3])
@@ -1056,10 +1055,10 @@ def fig4(dataroot, saveroot, save_figure=False):
     ax.set_xlabel('neural feature 2')
     ax.set_yticks([])
     ax.set_xticks([])
-    
+
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
             os.mkdir(os.path.join(saveroot, 'figs'))
         fig.savefig(os.path.join(saveroot, 'figs/fig4.pdf'), bbox_inches='tight')
-    
+
     return fig
