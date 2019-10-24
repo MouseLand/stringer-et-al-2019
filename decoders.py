@@ -40,6 +40,85 @@ try:
 except:
     print('torch not installed, cannot run neural-network decoder')
 
+
+def log_prob(a, x, y, rcos, rsin):
+    atx = a[0].T @ x
+    btx = a[1].T @ x
+
+    Z = atx * rcos[:, np.newaxis] + btx * rsin[:, np.newaxis]
+    Zmax = np.max(Z, axis=0)
+
+    Z = np.exp(Z-Zmax)
+    Zsum = np.sum(Z,axis=0)
+
+    logL = np.mean(atx * np.cos(y) + btx * np.sin(y) - np.log(Zsum) - Zmax)
+
+    Zcos = rcos.T @ Z / Zsum
+    Zsin = rsin.T @ Z / Zsum
+
+    da = (x @ (np.cos(y) - Zcos))#/x.shape[1]
+    db = (x @ (np.sin(y) - Zsin))#/x.shape[1]
+
+    return logL, np.stack((da,db))
+
+def log2d(fs, npc=0):
+    merror = np.zeros((len(fs),), np.float32)
+    for t,f in enumerate(fs):
+        dat = np.load(f, allow_pickle=True).item()
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
+
+        x = sresp[:, itrain]
+        y = istim[itrain]
+        NN, NT = np.shape(sresp)
+
+        th_range = np.arange(0, 2*np.pi, 2*np.pi/360)
+        rcos = np.cos(th_range)
+        rsin = np.sin(th_range)
+
+        a = np.random.randn(2, NN)/1e7 # initializdr with very small values
+
+        eps0 = 0.05 # learning rate
+        niter = 801
+        lam = .0 # regularization parameter, makes fitting unstable
+
+        logL = np.zeros(niter,)
+        pa = np.zeros(a.shape)
+
+        for it in range(niter):
+            logL[it], da = log_prob(a, x, y, rcos, rsin)
+            pa = .95 * pa + .05 * (da - lam * a)
+            if it<20:
+                eps = eps0/(20-it)
+            a += eps * pa
+            #if it%100==0:
+            #    print(logL[it])
+
+        dx = a[0].T @ sresp[:, itest]
+        dy = a[1].T @ sresp[:, itest]
+
+        apred = np.angle(dx + 1j * dy)
+        apred[apred<0] = apred[apred<0] + 2*np.pi
+
+        nangle = 2*np.pi
+        error = istim[itest] - apred
+        error = np.remainder(error, nangle)
+        error[error > nangle/2] = error[error > nangle/2] - nangle
+        merror[t] = np.median(np.abs(error)) * 180/np.pi
+        print(t, merror[t])
+        if t==0:
+            errors_ex = error
+            stims_ex = istim[itest]
+
+    return merror, errors_ex, stims_ex
+
+
+def lowstim_decoder(sresp, istim, itrain, itest):
+    # allen institute uses np.arange(0.0, 180.0, 30.0) stimuli
+    stims = np.arange(0.0, 180.0, 30.0)
+    irange = np.arange(-15.0, 180.0, 15.0)
+
+    return stims
+
 def fast_ridge(X, y, lam=1):
     N, M = X.shape
     lam = lam * M
@@ -52,10 +131,12 @@ def fast_ridge(X, y, lam=1):
     #w = np.squeeze(w)
     return w
 
-def independent_decoder(sresp, istim, itrain, itest, nbase = 10):
-    nangle =  2*np.pi
-    A, B, D, rez = fit_indep_model(sresp[:, itrain], istim[itrain], nbase)
-    apred, logL, B2, Kup = test_indep_model(sresp[:, itest], A, nbase)
+def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi):
+    if nangle==np.pi and istim.max() > np.pi:
+        istim = np.remainder(istim.copy(), np.pi)
+
+    A, B, D, rez = fit_indep_model(sresp[:, itrain], istim[itrain], nbase, nangle=nangle)
+    apred, logL, B2, Kup = test_indep_model(sresp[:, itest], A, nbase, nangle=nangle)
 
     # single neuron tuning curves
     ypred = A.T @ B
@@ -71,14 +152,14 @@ def independent_decoder(sresp, istim, itrain, itest, nbase = 10):
 
     return apred, error, ypred, logL, SNR, theta_pref
 
-def test_indep_model(X, A, nbase, xcoef = None):
+def test_indep_model(X, A, nbase, xcoef=None, nangle=2*np.pi):
     # use GPU for optimization
     nodes = 32
-    theta = np.linspace(0, 2*np.pi, nodes+1)[:-1]
+    theta = np.linspace(0, nangle, nodes+1)[:-1]
 
     bubu = np.arange(0,nbase)[:, np.newaxis]
-    F1 = np.cos(theta * bubu)
-    F2 = np.sin(theta * bubu)
+    F1 = np.cos(theta * bubu * (2*np.pi) / nangle)
+    F2 = np.sin(theta * bubu * (2*np.pi) / nangle)
     B = np.concatenate((F2,F1), axis=0)
     D = np.concatenate((F1*bubu, -F2*bubu), axis=0)
     B = B[1:, :]
@@ -91,15 +172,15 @@ def test_indep_model(X, A, nbase, xcoef = None):
 
     Kup = utils.upsampling_mat(nodes, int(3200/nodes), nodes/32)
     yup = logL @ Kup.T
-    apred = np.argmax(yup, axis=1) / yup.shape[1] * 2 * np.pi
+    apred = np.argmax(yup, axis=1) / yup.shape[1] * nangle
 
     return apred, logL, B, Kup
 
-def fit_indep_model(X, istim, nbase):
+def fit_indep_model(X, istim, nbase, nangle=2*np.pi):
     theta = istim.astype(np.float32)
     bubu = np.arange(0,nbase)[:, np.newaxis]
-    F1 = np.cos(theta * bubu)
-    F2 = np.sin(theta * bubu)
+    F1 = np.cos(theta * bubu * (2*np.pi) / nangle)
+    F2 = np.sin(theta * bubu * (2*np.pi) / nangle)
     B = np.concatenate((F2,F1), axis=0)
     D = np.concatenate((F1*bubu, -F2*bubu), axis=0)
     B = B[1:, :]
@@ -179,27 +260,99 @@ def get_pops(t0, A0, sresp, nth = 30):
         #pops[j, :] = np.mean(sresp[ix, :], axis=0)
     return pops
 
-def vonmises_decoder(sresp, istim, itrain, itest, nangle=2*np.pi, lam=1, dcdtype='L2'):
-    ''' stim ids istim, neural responses sresp (NNxnstim)'''
-    ''' nangle = np.pi if orientations'''
-    nth = 48
-    sigma = 0.05 * 2
+def nbasis_linear(fs, npc=0):
+    """ how the decoding varies as a function of the number of basis functions """
+    nbasis = [2, 5, 8, 10, 15, 20, 30, 48, 100]
+    ntt = [2.5, 5, 7.5, 10]
+    errors = np.zeros((len(ntt), len(nbasis), len(fs)), np.float32)
+    for i,f in enumerate(fs):
+        print('dataset %d'%i)
+        dat = np.load(f, allow_pickle=True).item()
+        sresp, istim, itrain, itest = utils.compile_resp(dat)
 
-    theta_pref = np.linspace(0,2*np.pi,nth+1)[:-1]
-    theta0 = 2 * np.pi / nangle * istim[itrain,np.newaxis] - theta_pref[np.newaxis,:]
+        lam = 1
+        nangle = 2 * np.pi
+        X = sresp[:,itrain]
+        XtX = X @ X.T
+        for j,nt in enumerate(ntt):
+            for k,nth in enumerate(nbasis):
+                if nth>2:
+                    sigma = nt / nth
+
+                    # von mises
+                    theta_pref = np.linspace(0,2*np.pi,nth+1)[:-1]
+                    theta0 = 2 * np.pi / nangle * istim[itrain,np.newaxis] - theta_pref[np.newaxis,:]
+                    y = np.exp((np.cos(theta0)-1) / sigma)
+                    y = zscore(y, axis=1)
+                else:
+                    # cosine decoding
+                    theta_pref = np.array([0.0])
+                    theta0 = 2 * np.pi / nangle * istim[itrain,np.newaxis] - theta_pref[np.newaxis,:]
+                    y = np.concatenate((np.cos(theta0[:,:1]), np.sin(theta0[:,:1])), axis=-1)
+
+                ntot = y.shape[0]
+
+                A = fast_ridge(X, y, lam=lam)
+                ypred = sresp[:,itest].T @ A
+
+                # circular interpolation of ypred
+                if nth>2:
+                    Kup = utils.upsampling_mat(y.shape[1])
+                    yup = ypred @ Kup.T
+                    apred = np.argmax(yup, axis=1) / yup.shape[1] * nangle
+                else:
+                    apred = np.arctan2(ypred[:,1], ypred[:,0])
+                error = istim[itest] - apred
+                error = np.remainder(error, nangle)
+                error[error > nangle/2] = error[error > nangle/2] - nangle
+                errors[j,k,i] = np.median(np.abs(error)) * 180/np.pi
+                print(errors[j,k,i])
+
+    return errors, nbasis
+
+def linear_2d(fs, npc=0, lam=5):
+    """ cosine / sine decoding """
+    errors = np.zeros((len(fs),), np.float32)
+    for i,f in enumerate(fs):
+        print('dataset %d'%i)
+        dat = np.load(f, allow_pickle=True).item()
+        sresp, istim, itrain, itest = utils.compile_resp(dat)
+
+        nangle = 2 * np.pi
+        X = sresp[:,itrain]
+        XtX = X @ X.T
+
+        # cosine decoding
+        theta_pref = np.array([0.0])
+        theta0 = 2 * np.pi / nangle * istim[itrain,np.newaxis] - theta_pref[np.newaxis,:]
+        y = np.concatenate((np.cos(theta0[:,:1]), np.sin(theta0[:,:1])), axis=-1)
+
+        A = fast_ridge(X, y, lam=lam)
+        ypred = sresp[:,itest].T @ A
+
+        apred = np.arctan2(ypred[:,1], ypred[:,0])
+        error = istim[itest] - apred
+        error = np.remainder(error, nangle)
+        error[error > nangle/2] = error[error > nangle/2] - nangle
+        errors[i] = np.median(np.abs(error)) * 180/np.pi
+        print(errors[i])
+
+    return errors
+
+
+def vonmises_decoder(sresp, istim, itrain, itest, nth=48, nangle=2*np.pi,
+                     lam=1, dcdtype='L2'):
+    """ stim ids istim, neural responses sresp (NNxnstim)
+        nangle = np.pi if orientations """
+    if nangle==np.pi and istim.max() > np.pi:
+        istim = np.remainder(istim.copy(), np.pi)
 
     # von mises
+    sigma = 0.1 / (nangle / (2*np.pi))
+    theta_pref = np.linspace(0, nangle, nth+1)[:-1]
+    theta0 = 2*np.pi/nangle * (istim[itrain,np.newaxis] - theta_pref[np.newaxis,:])
     y = np.exp((np.cos(theta0)-1) / sigma)
-
-    # add little bump in opposite direction
-    #if nangle > np.pi:
-    #    theta1 = 2 * np.pi / nangle * istim[itrain,np.newaxis] - (theta_pref[np.newaxis,:] - np.pi)%(2*np.pi)
-    #    y += 0.25 * np.exp((np.cos(theta1)-1) / sigma)
-
     y = zscore(y, axis=1)
-
-    NN = sresp.shape[0]
-    ntot = y.shape[0]
 
     X = sresp[:,itrain]
     if dcdtype=='L2':
@@ -236,23 +389,23 @@ def vonmises_decoder(sresp, istim, itrain, itest, nangle=2*np.pi, lam=1, dcdtype
 
     return apred, error, ypred, A
 
-def derivative_decoder(istim, sresp, itrain, itest, lam=1, theta_pref = np.linspace(0,2*np.pi,33)[:-1], dcdtype='regression'):
-    ''' stim ids istim, neural responses sresp (NNxnstim)'''
-    ''' nangle = np.pi if orientations'''
+def derivative_decoder(istim, sresp, itrain, itest, lam=1, nangle=2*np.pi,
+                       dcdtype='regression'):
+    """ stim ids istim, neural responses sresp (NNxnstim)
+        nangle = np.pi if orientations """
+    if nangle==np.pi and istim.max() > np.pi:
+        istim = np.remainder(istim.copy(), np.pi)
 
-    theta_pref = np.array(theta_pref)
-    nth = len(theta_pref)
-    sigma = 0.05 * 2
-    dt = np.pi/32
-
-    theta0 = istim[itrain,np.newaxis] - theta_pref[np.newaxis,:]
-
+    # difference of vonmises
+    sigma = 0.1 / (nangle / (2*np.pi))
+    dt = np.pi/32 # difference
+    theta_pref = np.linspace(0, nangle, 33)[:-1]
+    theta0 = 2*np.pi/nangle * (istim[itrain,np.newaxis] - theta_pref[np.newaxis,:])
     y = np.exp(np.cos(theta0- dt) / sigma) - np.exp(np.cos(theta0 + dt) / sigma)
-    NN = sresp.shape[0]
-    ntot = y.shape[0]
+    y = zscore(y, axis=1)
+
     X = sresp[:,itrain]
 
-    y = zscore(y, axis=0) # changed this from axis=0
     if dcdtype is 'regression':
         A = fast_ridge(X, y, lam = lam)
     else:
@@ -261,9 +414,10 @@ def derivative_decoder(istim, sresp, itrain, itest, lam=1, theta_pref = np.linsp
 
     D = np.zeros((0,))
     dy = np.zeros((0,))
+    nth = len(theta_pref)
     for j in range(nth):
-        ds = (istim[itest] - theta_pref[j])%(2*np.pi)
-        ds[ds>np.pi] = ds[ds>np.pi] - 2*np.pi
+        ds = (istim[itest] - theta_pref[j])%(nangle)
+        ds[ds > nangle/2] = ds[ds > nangle/2] - nangle
         D = np.concatenate((D, ds), axis=0)
         dy = np.concatenate((dy, ypred[j,:]), axis=0)
 
@@ -312,7 +466,7 @@ def nn_discriminator(xtrain, ytrain, xtest, ytest):
     ychoice = ((ypred[:,0]>0.5) - 0.5) * 2
     return ychoice
 
-def dense_discrimination(fs, npc=32):
+def dense_discrimination(fs, npc=0):
     ''' discriminate between +/- 2 degrees trials and as a function of # of neurons and stims '''
     nskipstim = 2**np.linspace(0, 10, 21)
     nstim     = np.zeros((len(nskipstim), len(fs)), 'int')
@@ -324,8 +478,8 @@ def dense_discrimination(fs, npc=32):
     theta_pref = np.array([np.pi/4])
     dd = 1/10
     drange2 = np.arange(-2, 2.01, dd*2)
-    P = np.zeros((len(nskipstim), len(drange2), len(fs)), np.float32)
-    P2 = np.zeros((len(nskip), len(drange2), len(fs)), np.float32)
+    P = np.zeros((len(nskipstim), len(nskip), len(drange2), len(fs)), np.float32)
+    #P2 = np.zeros((len(nskip), len(drange2), len(fs)), np.float32)
 
     for t,f in enumerate(fs):
         print(os.path.basename(f))
@@ -343,42 +497,30 @@ def dense_discrimination(fs, npc=32):
         y = zscore(y, axis=0) # changed this from axis=0
         np.random.seed(seed = 101)
         rperm2 = np.random.permutation(itrain.size)
-        for m in range(len(nskipstim)):
-            iSS = rperm2[:nstim[m,t]]
-            A = fast_ridge(X[:, iSS], y[iSS], lam = 1)
-            ypred = (A.T @ Xtest).flatten()
-            D = np.zeros((0,))
-            dy = np.zeros((0,))
-            ds = (istim[itest] - theta_pref[0])%(2*np.pi)
-            ds[ds>np.pi] = ds[ds>np.pi] - 2*np.pi
-            D = np.concatenate((D, ds), axis=0)
-            dy = np.concatenate((dy, ypred), axis=0)
-            for j,deg in enumerate(drange2):
-                ix = np.logical_and(D>np.pi/180 * (deg-dd), D<np.pi/180 * (deg+dd))
-                P[m, j, t] = np.mean(dy[ix]>0)
-
         np.random.seed(seed = 101)
         npop[:, t] = (NN/nskip).astype('int')
         rperm = np.random.permutation(NN)
-        for k in range(len(nskip)):
-            iNN = rperm[:npop[k,t]]
-            A = fast_ridge(X[iNN,:], y, lam=1)
-            ypred = (A.T @ Xtest[iNN,:]).flatten()
-            D = np.zeros((0,))
-            dy = np.zeros((0,))
+        for m in range(len(nskipstim)):
+            iSS = rperm2[:nstim[m,t]]
+            for k in range(len(nskip)):
+                iNN = rperm[:npop[k,t]]
+                A = fast_ridge(X[np.ix_(iNN, iSS)], y[iSS], lam = 1)
+                ypred = (A.T @ Xtest[iNN]).flatten()
+                D = np.zeros((0,))
+                dy = np.zeros((0,))
+                ds = (istim[itest] - theta_pref[0])%(2*np.pi)
+                ds[ds>np.pi] = ds[ds>np.pi] - 2*np.pi
+                D = np.concatenate((D, ds), axis=0)
+                dy = np.concatenate((dy, ypred), axis=0)
+                for j,deg in enumerate(drange2):
+                    ix = np.logical_and(D>np.pi/180 * (deg-dd), D<np.pi/180 * (deg+dd))
+                    P[m, k, j, t] = np.mean(dy[ix]>0)
 
-            ds = (istim[itest] - theta_pref[0])%(2*np.pi)
-            ds[ds>np.pi] = ds[ds>np.pi] - 2*np.pi
-            D = np.concatenate((D, ds), axis=0)
-            dy = np.concatenate((dy, ypred), axis=0)
+    return npop, nstim, P, drange2
 
-            for j,deg in enumerate(drange2):
-                ix = np.logical_and(D>np.pi/180 * (deg-dd), D<np.pi/180 * (deg+dd))
-                P2[k, j, t] = np.mean(dy[ix]>0)
-
-    return npop, nstim, P, P2, drange2
-
-def run_discrimination(fs, decoder='linear', npc=32):
+def run_discrimination(fs, nangles=None, decoder='linear', npc=0):
+    if nangles is None:
+        nangles = 2*np.pi * np.ones((len(fs),))
     drange = np.arange(-29,30)
     P = np.zeros((len(fs),len(drange)))
     d75 = np.zeros((len(fs),))
@@ -389,7 +531,7 @@ def run_discrimination(fs, decoder='linear', npc=32):
         sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
 
         if decoder=='linear':
-            D, dy, A = derivative_decoder(istim, sresp, itrain, itest)
+            D, dy, A = derivative_decoder(istim, sresp, itrain, itest, nangle=nangles[t])
             for j,deg in enumerate(drange):
                 ix = np.logical_and(D>np.pi/180 * (deg-.5), D<np.pi/180 * (deg+.5))
                 P[t,j] = np.nanmean(dy[ix]>0)
@@ -432,7 +574,9 @@ def run_discrimination(fs, decoder='linear', npc=32):
         print('--- discrimination threshold %2.2f'%d75[t])
     return P, d75, drange
 
-def run_decoder(fs, linear=True, npc=32):
+def run_decoder(fs, linear=True, nangles=None, npc=0):
+    if nangles is None:
+        nangles = 2*np.pi * np.ones((len(fs),))
     E = np.zeros((len(fs),))
     errors = []
     stims = []
@@ -445,9 +589,11 @@ def run_decoder(fs, linear=True, npc=32):
         SNR = []
         theta_pref = []
         if linear:
-            apred, error, _, _ = vonmises_decoder(sresp, istim, itrain, itest)
+            d = vonmises_decoder(sresp, istim, itrain, itest, nangle=nangles[t])
+            apred, error = d[0], d[1]
         else:
-            apred, error, _, _, SNR, theta_pref = independent_decoder(sresp, istim, itrain, itest)
+            d = independent_decoder(sresp, istim, itrain, itest, nangle=nangles[t])
+            apred, error, SNR, theta_pref = d[0], d[1], d[4], d[5]
 
         # save error and stimulus
         errors.append(error)
@@ -459,7 +605,7 @@ def run_decoder(fs, linear=True, npc=32):
 
     return E, errors, stims, snrs, theta_prefs
 
-def runspeed_discrimination(fs, all_running, npc=32):
+def runspeed_discrimination(fs, all_running, npc=0):
     ntesthalf = 1000
     drange = np.arange(-29, 30, 1)
     P0 = np.zeros((len(fs), len(drange), 2), np.float32)
@@ -496,7 +642,7 @@ def runspeed_discrimination(fs, all_running, npc=32):
     return P0, d75, drange
 
 
-def layer_discrimination(fs, all_depths, npc=32):
+def layer_discrimination(fs, all_depths, npc=0):
     drange = np.arange(-29, 30, 1)
     P0 = np.zeros((len(fs), len(drange), 2), np.float32)
     d75 = np.zeros((len(fs), 2), np.float32)
@@ -525,7 +671,7 @@ def layer_discrimination(fs, all_depths, npc=32):
 
     return P0, d75, drange
 
-def chron_discrimination(fs, all_depths, npc=32):
+def chron_discrimination(fs, all_depths, npc=0):
     drange = np.arange(-29, 30, 1)
     P0 = np.zeros((len(fs), len(drange), 2), np.float32)
     d75 = np.zeros((len(fs), 2), np.float32)
@@ -558,7 +704,61 @@ def chron_discrimination(fs, all_depths, npc=32):
 
     return P0, d75, drange
 
-def asymptotics(fs, linear=True, npc=32):
+def dense_decoder(sresp, istim, itrain, itest, lam=1):
+    y = istim[itrain]
+    X = sresp[:,itrain]
+    XtX = X @ X.T
+    A = fast_ridge(X, y, lam=lam)
+    apred = sresp[:,itest].T @ A
+    error = istim[itest] - apred
+    return apred, error
+
+def dense_asymptotics(fs, lam=1, npc=0):
+    """ linear decoding of densely presented stims as a fcn of neurons and trials """
+    nskip = 2**np.linspace(0, 10, 21)
+    nskipstim = 2**np.linspace(0, 10, 21)
+    Eneur = np.zeros((len(nskip), len(fs)))
+    Estim = np.zeros((len(nskipstim), len(fs)))
+
+    npop = np.zeros((len(nskip), len(fs)), 'int')
+    nstim = np.zeros((len(nskipstim), len(fs)), 'int')
+
+    errors = []
+    stims = []
+    snrs = []
+    theta_prefs = []
+    for t,f in enumerate(fs):
+        print('dataset %d'%t)
+        dat = np.load(f, allow_pickle=True).item()
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
+        istim -= istim.mean()
+
+        NN = sresp.shape[0]
+        npop[:, t] = (NN/nskip).astype('int')
+        np.random.seed(seed = 101)
+        rperm = np.random.permutation(NN)
+        for k in range(len(nskip)):
+            iNN = rperm[:npop[k,t]]
+            error = dense_decoder(sresp[iNN], istim, itrain, itest, lam=lam)[1]
+            Eneur[k,t] = np.mean((error * 180/np.pi) ** 2)
+            #if k==0:
+            #print(np.median(np.abs(error))* 180/np.pi)
+            #print(k,t,Eneur[k,t])
+
+        nstim[:,t] = (itrain.size/nskipstim).astype('int')
+        np.random.seed(seed = 101)
+        rperm = np.random.permutation(itrain.size)
+        for k in range(len(nskipstim)):
+            iSS = rperm[:nstim[k,t]]
+            error = dense_decoder(sresp, istim, itrain[iSS], itest, lam=lam)[1]
+            Estim[k,t] = np.mean((error * 180/np.pi)**2)
+            #if k==0:
+            #print(k,t,Estim[k,t])
+
+
+    return Eneur, Estim, npop, nstim
+
+def asymptotics(fs, linear=True, npc=0):
     nskip = 2**np.linspace(0, 10, 21)
     nskipstim = 2**np.linspace(0, 10, 21)
     E = np.zeros((len(nskip),2, len(fs)))
@@ -620,7 +820,7 @@ def asymptotics(fs, linear=True, npc=32):
 
     return E, ccE, nsplit, npop, nstim, E2
 
-def pc_decoding(fs, nPC, npc=32):
+def pc_decoding(fs, nPC, npc=0):
     ''' linearly decode from PCs of data '''
 
     errors = np.zeros((len(fs), len(nPC)))

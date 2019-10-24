@@ -11,6 +11,23 @@ from sklearn.manifold import isomap
 from sklearn.decomposition import PCA
 import utils
 
+def signal_variance(fs, npc=0):
+    sigvar = np.zeros((0,), np.float32)
+    for f in fs:
+        dat = np.load(f, allow_pickle=True).item()
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
+        NN,nstim = sresp.shape
+
+        isort = np.argsort(istim)
+        sresp = sresp[:,isort]
+        A = np.transpose(np.reshape(sresp[:, :(nstim//2)*2], (NN, nstim//2, 2)), (1,0,2))
+
+        A = (A - A.mean(axis=0)) / A.std(axis=0) + 1e-3
+        sv0 =(A[:,:,0] * A[:,:,1]).mean(axis=0)
+        print(sv0.mean())
+        sigvar = np.append(sigvar, sv0, axis=0)
+    return sigvar, A
+
 def halfwidth_halfmax(x, y, xmax):
     ''' *x is sorted in ascending order* '''
     nt = x.size
@@ -20,14 +37,14 @@ def halfwidth_halfmax(x, y, xmax):
     imin2 = np.argmin(np.abs(x - (xmax-np.pi)%(2*np.pi)))
     ymin = (y[imin1] + y[imin2]) / 2
     halfmax = (y[imax] - ymin) / 2 + ymin
-    
+
     # right side of curve
     iinds = np.arange(imax+1, imax+10, 1, int)
     iinds[iinds>=nt] = nt - iinds[iinds>=nt]
     dplus = y[iinds]
     dind = np.argmin(np.abs(dplus - halfmax))
     angle_plus = x[iinds[dind]]
-    
+
     # left side of curve
     iinds = np.arange(imax-10, imax, 1, int)
     # negative values will loop to correct values
@@ -38,7 +55,7 @@ def halfwidth_halfmax(x, y, xmax):
     if hwhm > np.pi:
         hwhm = 2*np.pi - hwhm
     hwhm /= 2
-    
+
     return hwhm, angle_plus, angle_minus
 
 
@@ -51,8 +68,8 @@ def population_distances(sresp, istim):
     dtheta = istim[:,np.newaxis] - istim[np.newaxis,:]
     np.fill_diagonal(cc, np.nan)
     dtheta_aligned = (dtheta+np.pi/2)%(2*np.pi)
-    cbinned = utils.binned((dtheta_aligned*180/np.pi).flatten()[~np.isnan(cc.flatten())], 
-                             cc.flatten()[~np.isnan(cc.flatten())], np.linspace(0,360,65))
+    cbinned = utils.binned((dtheta_aligned*180/np.pi).flatten()[~np.isnan(cc.flatten())],
+                             cc.flatten()[~np.isnan(cc.flatten())], np.linspace(0,360,80))
 
     pca = PCA(n_components=100).fit(sresp)
     u = pca.components_.T
@@ -91,6 +108,6 @@ def population_tuning(fs, angle_pref, saveroot):
             avg_test_curves[k] = stest[dists<tdiff/2].mean(axis=0)
             avg_tuning[k,:,t],_,_ = utils.binned(istim[itest], avg_test_curves[k], bins)
 
-    tbins = bins[:-1]+(bins[1]-bins[0])/2     
-    
+    tbins = bins[:-1]+(bins[1]-bins[0])/2
+
     return avg_tuning, tbins

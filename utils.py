@@ -3,26 +3,63 @@ from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter1d
 from sklearn.decomposition import PCA
 from scipy.optimize import curve_fit
-from scipy.stats import linregress
+from sklearn.linear_model import LinearRegression
 
-def fit_asymptote(x, y):
+def fit_asymptote(x, y, xall, fitexp=False):
     ''' fit y = alpha + beta / sqrt(x)'''
-    xi = x**-0.5
-    print(xi)
-    beta, alpha, r2, _, _ = linregress(xi, y)
-    return alpha, beta, r2**2
+    xi = x.copy()**-0.5
+    if xi.ndim < 2:
+        xi = xi[:,np.newaxis]
+        xall = xall[:,np.newaxis]
+    reg = LinearRegression().fit(xi, y)
+    beta = reg.coef_
+    alpha = reg.intercept_
+    r2 = reg.score(xi, y)
+    if not fitexp:
+        ypred = alpha + np.dot(xall**-0.5, beta)
+        par = [alpha]
+        for b in beta:
+            par.append(b)
+        return par, r2, ypred
+    if xi.shape[1]==1:
+        par0 = [alpha, beta[0], 0.5]
+        f = asymp
+    else:
+        par0 = [alpha, beta[0], beta[1], 0.5, 0.5]
+        f = asymp2
+    par, mcov = curve_fit(f, x, y, par0)
+
+    if xi.shape[1]==1:
+        ypred = asymp(x, par[0], par[1], par[2])
+    else:
+        ypred = asymp2(x.T, par[0], par[1], par[2], par[3], par[4])
+    r2 = np.corrcoef(ypred, y)[0,1]
+    print(par, r2)
+    if xi.shape[1]==1:
+        ypred = asymp(xall, par[0], par[1], par[2])
+    else:
+        ypred = asymp2(xall.T, par[0], par[1], par[2], par[3], par[4])
+    return par, r2**2, ypred
+
+def asymp(x, alpha, beta, t1):
+    y = alpha + beta / x**t1
+    return y
+
+def asymp2(x, alpha, beta, gamma, t1, t2):
+    y = alpha + beta / x[0]**t1 + gamma / x[1]**t2
+    return y
 
 
 def discrimination_threshold(P, x):
     P = (P + 1-P[::-1])/2
     par0 = np.array([5])
-    par, mcov = curve_fit(logistic, x, P, par0)    
+    par, mcov = curve_fit(logistic, x, P, par0)
     p75 = - np.log(1/0.75 - 1) * par[0]
     return p75, logistic(x, par)
 
 # psychometric function
 def logistic(x, beta):
-    return 1. / (1 + np.exp( -x / beta )) 
+    return 1. / (1 + np.exp( -x / beta ))
 
 def upsampling_mat(ntot, upfactor = 100, sig = 1):
     xs = np.arange(0, ntot)
@@ -90,7 +127,6 @@ def stripe_split(ypos, nstrips):
     n2     = (ypos[:,np.newaxis] == ytest[np.newaxis,:]).sum(axis=1).nonzero()[0]
     return n1, n2
 
-
 def get_powerlaw(ss, trange):
     logss = np.log(np.abs(ss))
     y = logss[trange][:,np.newaxis]
@@ -99,7 +135,7 @@ def get_powerlaw(ss, trange):
     x = np.concatenate((-np.log(trange)[:,np.newaxis], np.ones((nt,1))), axis=1)
     w = 1.0 / trange.astype(np.float32)[:,np.newaxis]
     b = np.linalg.solve(x.T @ (x * w), (w * x).T @ y).flatten()
-    
+
     allrange = np.arange(0, ss.size).astype(int) + 1
     x = np.concatenate((-np.log(allrange)[:,np.newaxis], np.ones((ss.size,1))), axis=1)
     ypred = np.exp((x * b).sum(axis=1))
@@ -123,7 +159,7 @@ def cvPCA(X):
     pca = PCA(n_components=min(1024, X.shape[1])).fit(X[0].T)
     u = pca.components_.T
     sv = pca.singular_values_
-    
+
     xproj = X[0].T @ (u / sv)
     cproj0 = X[0] @ xproj
     cproj1 = X[1] @ xproj
@@ -161,7 +197,7 @@ def SVCA(X):
     u /= (u**2).sum(axis=0)**0.5
     v = cov.T @ u
     v /= (v**2).sum(axis=0)**0.5
-    
+
     strain = u.T @ X[np.ix_(ntrain,ttest)]
     stest = v.T @ X[np.ix_(ntest,ttest)]
 
