@@ -95,7 +95,7 @@ def resample_frames(data, torig, tout):
     dout = f(tout)
     return dout
 
-def compile_resp(dat, nskip=4, npc=0):
+def compile_resp(dat, nskip=4, npc=0, zscore=True):
     istim = dat['istim']
     # split stims into test and train
     itest = np.zeros((istim.size,), np.bool)
@@ -104,16 +104,18 @@ def compile_resp(dat, nskip=4, npc=0):
     itrain[itest] = 0
     itrain = itrain.nonzero()[0]
     itest = np.nonzero(itest)[0]
-
-    # subtract off spont PCs
-    sresp = (dat['sresp'].copy() - dat['mean_spont'][:,np.newaxis]) / dat['std_spont'][:,np.newaxis]
-    if npc > 0:
-        sresp = sresp - dat['u_spont'][:,:npc] @ (dat['u_spont'][:,:npc].T @ sresp)
-    sresp = sresp[:,:istim.size]
-    # zscore sresp across stimuli (so each neuron has mean 0 / std 1 responses)
-    ssub0 = sresp.mean(axis=1)
-    sstd0 = sresp.std(axis=1) + 1e-6
-    sresp = (sresp - ssub0[:,np.newaxis]) / sstd0[:,np.newaxis]
+    if zscore:
+        # subtract off spont PCs
+        sresp = (dat['sresp'].copy() - dat['mean_spont'][:,np.newaxis]) / dat['std_spont'][:,np.newaxis]
+        if npc > 0:
+            sresp = sresp - dat['u_spont'][:,:npc] @ (dat['u_spont'][:,:npc].T @ sresp)
+        sresp = sresp[:,:istim.size]
+        # zscore sresp across stimuli (so each neuron has mean 0 / std 1 responses)
+        ssub0 = sresp.mean(axis=1)
+        sstd0 = sresp.std(axis=1) + 1e-6
+        sresp = (sresp - ssub0[:,np.newaxis]) / sstd0[:,np.newaxis]
+    else:
+        sresp = dat['sresp'].copy()
     return sresp, istim, itrain, itest
 
 def stripe_split(ypos, nstrips):

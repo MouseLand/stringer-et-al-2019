@@ -120,7 +120,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     rc('font', **{'size': 6})#, 'family':'sans-serif'})#,'sans-serif':['Helvetica']})
 
     # load spks
-    dat=np.load(os.path.join(dataroot, 'spks_gratings_static_TX40_2019_05_02_1.npy')).item()
+    dat=np.load(os.path.join(dataroot, 'spks_gratings_static_TX40_2019_05_02_1.npy'), allow_pickle=True).item()
     stimtimes,stat,ops = dat['stimtimes'],dat['stat'],dat['ops_plane6']
     sresp, istim, itrain, itest = utils.compile_resp(dat)
 
@@ -201,8 +201,8 @@ def fig1(dataroot, saveroot, save_figure=False):
     imgplot=ax.imshow(img)
     imgplot.set_interpolation('bicubic')
     ax.axis('off')
-    ax.text(-0.03, 1.0, string.ascii_uppercase[0], transform=ax.transAxes, size=12)
-    ax.text(0.45, 1.0, string.ascii_uppercase[1], transform=ax.transAxes, size=12)
+    ax.text(-0.03, 1.0, string.ascii_lowercase[0], transform=ax.transAxes, size=12)
+    ax.text(0.45, 1.0, string.ascii_lowercase[1], transform=ax.transAxes, size=12)
 
     ax=fig.add_axes([.5,.77,.5,.31])
     ax.imshow(mimg, cmap=plt.get_cmap('gray'),vmin=1000,vmax=6000, aspect=1.5)
@@ -210,7 +210,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     ax.text(0.01, 0.73, 'Maximum fluorescence image', color='k', transform=ax.transAxes)
     ax.axis('off')
     ax.text(-0.05, .73
-            , string.ascii_uppercase[2], transform=ax.transAxes, size=12)
+            , string.ascii_lowercase[2], transform=ax.transAxes, size=12)
     plt.plot([masks.shape[1],masks.shape[1]-75],[-3,-3],color='k')
     ax.set_xlim(0,masks.shape[1])
     ax.set_ylim(-4,75)
@@ -229,13 +229,13 @@ def fig1(dataroot, saveroot, save_figure=False):
     nt = dsmooth.shape[1]
     ax.imshow(dsmooth[:,:], cmap=plt.get_cmap('gray'),vmin=-.3, vmax=6, aspect='auto')
     ax.text(-.05,.5, 'neurons sorted by pref angle', verticalalignment='center', transform=ax.transAxes,rotation=90)
-    ax.text(1.01,0.4, '5,000 neurons',transform=ax.transAxes,rotation=270)
+    ax.text(1.01,0.0, '5,000 neurons',transform=ax.transAxes,rotation=270)
     ax.set_yticks([])
     ax.set_xticks([])
     ax.plot((nt-1+7)*np.array([1,1]), [NN-1,NN-5000], color='k', linewidth=4)
     ax.set_xlim(0,nt+8)
     ax.axis('off')
-    ax.text(-0.08, 1.01, string.ascii_uppercase[3], transform=ax.transAxes, size=12)
+    ax.text(-0.08, 1.01, string.ascii_lowercase[3], transform=ax.transAxes, size=12)
 
     ax = fig.add_axes([.04,.25,.45,.05])
     scol = (0.7,0.6,.7)
@@ -271,7 +271,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     ax.text(0,1.05,r'example neuron #%d'%iex, transform=ax.transAxes)#, (thpref-.2)*180/np.pi, (thpref+.2)*180/np.pi), fontsize=8)
     ax.set_xlabel('time from stim (s)')
     ax.set_ylabel('stimulus angles')
-    ax.text(-0.4, 1.01, string.ascii_uppercase[4], transform=ax.transAxes, size=12)
+    ax.text(-0.4, 1.01, string.ascii_lowercase[4], transform=ax.transAxes, size=12)
 
     axi = fig.add_axes([.49,.61-.1,.01,.1])
     plt.colorbar(im,axi)
@@ -289,7 +289,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     ax.set_xticks([0, 180, 360])
     ax.set_xlabel('stimulus angle ($^\circ$)')
     ax.set_ylabel('response\n(z-scored)')
-    ax.text(-1, .88, string.ascii_uppercase[5], transform=ax.transAxes, size=12)
+    ax.text(-1, .88, string.ascii_lowercase[5], transform=ax.transAxes, size=12)
     #ax.axis('square')
 
     ax = fig.add_axes([.88,.31,.09,.11])
@@ -305,7 +305,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.text(.12,3000,r'SNR = $\frac{var(signal)}{var(noise)}$')
-    ax.text(-1, .95, string.ascii_uppercase[6], transform=ax.transAxes, size=12)
+    ax.text(-1, .95, string.ascii_lowercase[6], transform=ax.transAxes, size=12)
 
 
     img=Image.open(os.path.join(dataroot,'hypotheses.png'))
@@ -313,7 +313,7 @@ def fig1(dataroot, saveroot, save_figure=False):
     imgplot=ax.imshow(img)
     imgplot.set_interpolation('bicubic')
     ax.axis('off')
-    ax.text(-0.04, 1.08, string.ascii_uppercase[7], transform=ax.transAxes, size=12)
+    ax.text(-0.04, 1.08, string.ascii_lowercase[7], transform=ax.transAxes, size=12)
     ax.text(-0.01, 1.08, 'Coordination of decoding errors between neurons (hypotheses)', transform=ax.transAxes, size=8)
 
 
@@ -422,7 +422,7 @@ def fig2(dataroot, saveroot, save_figure=False):
         if k==0:
             ax.set_ylabel('response\n(z-score)')
             ax.text(-.4,1.35,'Independent decoder',size=8, transform=ax.transAxes, color=berry)
-            ax.text(-0.8, 1.35, string.ascii_uppercase[0], transform=ax.transAxes, size=12)
+            ax.text(-0.8, 1.35, string.ascii_lowercase[0], transform=ax.transAxes, size=12)
         yp = 200
         plt.annotate('',[365,4],[540+yp,4], arrowprops=dict(arrowstyle= '<|-',facecolor='black',lw=1))
 
@@ -474,7 +474,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     ax.spines['right'].set_visible(False)
     ax.set_aspect(aspect=1)
     ax.text(-.3, ylab,'Test trials',size=6, transform=ax.transAxes)
-    ax.text(-.5, ylab, string.ascii_uppercase[1], transform=ax.transAxes, size=12)
+    ax.text(-.5, ylab, string.ascii_lowercase[1], transform=ax.transAxes, size=12)
 
     ax = fig.add_axes([xpos[1], ypos[1], bz, bz*yratio])
     nb=plt.hist(error* 180/np.pi, np.linspace(0,25, 21), color = berry)
@@ -484,7 +484,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     ax.set_xlabel(r'absolute angle error ($^\circ$)')
     ax.set_ylabel('trial counts')
     ax.set_xlim([0,20])
-    ax.text(-.5, ylab, string.ascii_uppercase[2], transform=ax.transAxes, size=12)
+    ax.text(-.5, ylab, string.ascii_lowercase[2], transform=ax.transAxes, size=12)
     axins = fig.add_axes([xpos[1]+bz*1., ypos[1]+bz*1, .04,.04*yratio])
     axins.hist(E[0,0,:], 3, color=berry)
     axins.set_xlabel('median error')
@@ -514,7 +514,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     xx = (theta0+np.array([-.5, .5])) * 180/np.pi
     yy = larange
     ax.fill([xx[0], xx[1], xx[1], xx[0]], [yy[0], yy[0], yy[1], yy[1]], color=[.7, .7, .7], alpha=0.3)
-    ax.text(-.5, 1.1, string.ascii_uppercase[3], transform=ax.transAxes, size=12);
+    ax.text(-.5, 1.1, string.ascii_lowercase[3], transform=ax.transAxes, size=12);
 
     ax = fig.add_axes([xpos[0]+.038, ypos[0]-.06, bz*.7, bz])
     ax.plot(np.linspace(0, 360, logup.shape[1]+1)[:-1], logup1, color = col1)
@@ -536,7 +536,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     ax.tick_params(axis='y', labelcolor=col2)
     ax.tick_params(axis='x', labelcolor=col1)
     ax.text(-23, 17, '$R_{S}$=%2.2f'%RS[0], color ='k')
-    ax.text(-0.5, ylab, string.ascii_uppercase[4], transform=ax.transAxes, size=12);
+    ax.text(-0.5, ylab, string.ascii_lowercase[4], transform=ax.transAxes, size=12);
     #ax.scatter(E[0,0,:nstatic], ccE[0,1,:nstatic], marker='+', s=10, color = 'k', lw=0.7)
 
     axins = fig.add_axes([xpos[1]+bz*1.1, ypos[0]+bz*1, .04,.04*yratio])
@@ -599,7 +599,7 @@ def fig3(dataroot, saveroot, save_figure=False):
     plt.text(.4,.5,'   linear\nregression',verticalalignment='center', size=8,
               fontweight='bold',rotation=270)
     iplot=0
-    ax.text(-.3, 1.08, string.ascii_uppercase[iplot], transform=ax.transAxes, size=12)
+    ax.text(-.3, 1.08, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
     iplot+=1
     ax= fig.add_axes([0.22,0.1,0.21,ys])
     #cmap=plt.get_cmap('hsv')
@@ -665,7 +665,7 @@ def fig3(dataroot, saveroot, save_figure=False):
     ax.set_xticks([0, 180, 360])
     ax.set_yticks([0, 180, 360])
     ax.text(-.3,1.1,'Test trials',size=6, transform=ax.transAxes)
-    ax.text(-.5, 1.08, string.ascii_uppercase[iplot], transform=ax.transAxes, size=12)
+    ax.text(-.5, 1.08, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
     iplot+=1
 
     ax = fig.add_axes([xpos[1], ypos[1], bz, bz*yratio])
@@ -676,7 +676,7 @@ def fig3(dataroot, saveroot, save_figure=False):
     ax.set_xlabel(r'absolute angle error ($^\circ$)')
     ax.set_ylabel('trial counts')
     ax.set_xlim([0,20])
-    ax.text(-0.5, 1.08, string.ascii_uppercase[iplot], transform=ax.transAxes, size=12)
+    ax.text(-0.5, 1.08, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
     iplot+=1
 
     axins = fig.add_axes([xpos[1]+bz*1.1, ypos[1]+bz*1, .04,.04*yratio])
@@ -724,7 +724,7 @@ def fig3(dataroot, saveroot, save_figure=False):
         ax.tick_params(axis='y')
         ax.set_xticks([1, 10, 100, 1000, 10000])
         ax.fill_between(mux, muy-semy, muy+semy, facecolor=grn, alpha=0.5)
-        ax.text(-0.5, 1.08, string.ascii_uppercase[iplot], transform=ax.transAxes, size=12);
+        ax.text(-0.5, 1.08, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12);
         iplot+=1
 
 
@@ -759,7 +759,7 @@ def fig4(dataroot, saveroot, save_figure=False):
         ax.text(-.4, .5, '%d$^\circ$'%ang[k], transform=ax.transAxes)
         if k==0:
             ax.text(-0.2,1.2,'Angle > 45$^\circ$?', transform=ax.transAxes, fontsize=8)
-            ax.text(-.45, 1.19, string.ascii_uppercase[iplot], transform=ax.transAxes,
+            ax.text(-.45, 1.19, string.ascii_lowercase[iplot], transform=ax.transAxes,
                     size=12)
         y0 -= dy
     iplot+=1
@@ -822,7 +822,7 @@ def fig4(dataroot, saveroot, save_figure=False):
     ax.set_ylabel('% "choose right"')#,fontsize=14)
     ax.set_xlabel('angle difference  ($^\circ$)')#,fontsize=14)
     #ax.set_position(ax.get_position().bounds - np.array([.13, -.2, 0.04, 0.04]))
-    ax.text(-.45, 1.0, string.ascii_uppercase[iplot], transform=ax.transAxes,
+    ax.text(-.45, 1.0, string.ascii_lowercase[iplot], transform=ax.transAxes,
                 size=12)
     iplot+=1
 
@@ -843,7 +843,7 @@ def fig4(dataroot, saveroot, save_figure=False):
     ax.set_ylabel('neurons')
     cbar = fig.colorbar(im, ticks=[0.5, 1, 2])
     cbar.ax.set_yticklabels(['0.5', '1.0', '2.0'])
-    ax.text(-.6, 1.0, string.ascii_uppercase[iplot], transform=ax.transAxes,
+    ax.text(-.6, 1.0, string.ascii_lowercase[iplot], transform=ax.transAxes,
                     size=12)
 
     d = np.load(os.path.join(saveroot, 'dense_decoding.npy'), allow_pickle=True).item()
@@ -907,7 +907,7 @@ def fig4(dataroot, saveroot, save_figure=False):
             #ax.set_ylim([0,300])
             #ax.set_ylim([0, 1])
         if k==0 or k==2:
-            ax.text(-.75, 1.075, string.ascii_uppercase[iplot], transform=ax.transAxes,  size=12)
+            ax.text(-.75, 1.075, string.ascii_lowercase[iplot], transform=ax.transAxes,  size=12)
             #ax.text(-.25, 1.075, 'Asymptotics', transform=ax.transAxes,  size=14)
             #ax.set_xlim([10, 1000])
             ax.set_xlim([10,1000])
@@ -994,15 +994,15 @@ def fig5(dataroot, saveroot, save_figure=False):
         if k==0:
             ax.set_ylabel('% "choose right"')
             ax.set_xlabel('angle difference  ($^\circ$)')
-            ax.text(-.5, 1.25, string.ascii_uppercase[iplot], transform=ax.transAxes,  size=12)
+            ax.text(-.5, 1.25, string.ascii_lowercase[iplot], transform=ax.transAxes,  size=12)
             #ax.text(, 1.3, '10 trials/deg', transform=ax.transAxes,  size=6)
             iplot+=1
         elif idx[k]==N-2:
-            ax.text(-.5, 1.25, string.ascii_uppercase[iplot], transform=ax.transAxes,  size=12)
+            ax.text(-.5, 1.25, string.ascii_lowercase[iplot], transform=ax.transAxes,  size=12)
             ax.text(-.2, 1.3, 'Effect of running', transform=ax.transAxes,  size=6)
             iplot+=1
         elif idx[k]!=N-1:
-            ax.text(-.5, 1.25, string.ascii_uppercase[iplot], transform=ax.transAxes,  size=12)
+            ax.text(-.5, 1.25, string.ascii_lowercase[iplot], transform=ax.transAxes,  size=12)
             iplot+=1
         if k==5:
             ax.set_ylabel('% "choose right"')
@@ -1058,7 +1058,7 @@ def fig6(dataroot, saveroot, save_figure=False):
     learn_fig = plt.imread(os.path.join(dataroot, 'learning.png'))
     ax.imshow(learn_fig)
     ax.axis('off')
-    ax.text(-.1, 1.1, string.ascii_uppercase[iplot], transform=ax.transAxes,
+    ax.text(-.1, 1.1, string.ascii_lowercase[iplot], transform=ax.transAxes,
                     size=24)
     ax.text(.0, 1.1, 'Perceptron learners', transform=ax.transAxes, fontsize=14)
 
@@ -1066,16 +1066,16 @@ def fig6(dataroot, saveroot, save_figure=False):
     ax.text(.325, -.2, 'linear decoder', color = cols[0], transform=ax.transAxes)
 
     iplot += 1
-    ax.text(1.0, 1.1, string.ascii_uppercase[iplot], transform=ax.transAxes, size=24)
+    ax.text(1.0, 1.1, string.ascii_lowercase[iplot], transform=ax.transAxes, size=24)
     ax.text(1.1, 1.1, 'Easy task', transform=ax.transAxes, fontsize=14)
     iplot += 1
-    ax.text(2.0, 1.1, string.ascii_uppercase[iplot], transform=ax.transAxes, size=24)
+    ax.text(2.0, 1.1, string.ascii_lowercase[iplot], transform=ax.transAxes, size=24)
     ax.text(2.1, 1.1, 'Hard task', transform=ax.transAxes, fontsize=14)
     iplot += 1
-    ax.text(-.1, -.425, string.ascii_uppercase[iplot], transform=ax.transAxes, size=24)
+    ax.text(-.1, -.425, string.ascii_lowercase[iplot], transform=ax.transAxes, size=24)
     ax.text(.0, -.425, 'Weak learners', transform=ax.transAxes, size=14)
     iplot += 1
-    ax.text(2.0, -.425, string.ascii_uppercase[iplot], transform=ax.transAxes, size=24)
+    ax.text(2.0, -.425, string.ascii_lowercase[iplot], transform=ax.transAxes, size=24)
     ax.text(2.1, -.425, 'Easy task', transform=ax.transAxes, fontsize=14)
 
     ax.text(.4,   -.645, '"best neuron"\nlearner', transform=ax.transAxes, size=14, ha = 'center', color = col2[0])

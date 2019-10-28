@@ -75,9 +75,9 @@ def linear_decoders(dataroot, saveroot, save_figure=False):
             ax.set_title('binned, all recordings')
             ax.set_ylabel('abs error ($^\circ$)')
             ax.set_xlabel('stimulus angle ($^\circ$)')
-            ax.text(-.9,1.2, 'C', size=12, transform=ax.transAxes)
-            ax.text(-.9,3.4, 'B', size=12, transform=ax.transAxes)
-            ax.text(-.9,4.6, 'A', size=12, transform=ax.transAxes)
+            ax.text(-.9,1.2, 'c', size=12, transform=ax.transAxes)
+            ax.text(-.9,3.4, 'b', size=12, transform=ax.transAxes)
+            ax.text(-.9,4.6, 'a', size=12, transform=ax.transAxes)
 
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
@@ -142,7 +142,7 @@ def asymptotics(saveroot, save_figure=False):
             ax.set_xlabel('# of stimuli')
         ax.tick_params(axis='y')
         ax.fill_between(mux, muy-semy, muy+semy, facecolor=cols[k], alpha=0.5)
-        ax.text(-0.5, 1.08, string.ascii_uppercase[k], transform=ax.transAxes, size=12);
+        ax.text(-0.5, 1.08, string.ascii_lowercase[k], transform=ax.transAxes, size=12);
 
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
@@ -207,7 +207,7 @@ def stim_props(saveroot, save_figure=False):
             ax.set_xticks([0,2,4,6])
             ax.set_yticks([0,2,4,6])
         ax.text(0.1,.95,'example neuron', transform=ax.transAxes)
-        ax.text(-.5,1.07,string.ascii_uppercase[iplot],size=12,transform=ax.transAxes)
+        ax.text(-.5,1.07,string.ascii_lowercase[iplot],size=12,transform=ax.transAxes)
         ax.text(-.3,1.09,ttl[i],size=8,transform=ax.transAxes, fontstyle='italic')
         iplot+=1
 
@@ -291,7 +291,7 @@ def stim_props(saveroot, save_figure=False):
             ax.set_xlabel('preferred direction ($^\circ$)')
             ax.set_title('drifting gratings      ', fontstyle='italic')
         ax.set_ylabel('fraction')
-        ax.text(-.4,1.05,string.ascii_uppercase[iplot],size=12,transform=ax.transAxes)
+        ax.text(-.4,1.05,string.ascii_lowercase[iplot],size=12,transform=ax.transAxes)
         iplot+=1
 
         xx,yy = np.meshgrid(np.arange(0,100)/8, np.arange(0,100)/8)
@@ -343,7 +343,7 @@ def stim_props(saveroot, save_figure=False):
             ax.set_xlabel('stimulus direction ($^\circ$)')
         ax.set_yticks([0,.5,1.0])
         ax.set_ylim(-.25,1.1)
-        ax.text(-.4,1.05,string.ascii_uppercase[iplot],size=12,transform=ax.transAxes)
+        ax.text(-.4,1.05,string.ascii_lowercase[iplot],size=12,transform=ax.transAxes)
         iplot+=1
 
 
@@ -425,7 +425,7 @@ def stim_distances(saveroot, save_figure=False):
             ax.set_xlabel('preferred direction ($^\circ$)')
             ax.set_title('drifting gratings      ', fontstyle='italic')
         ax.set_ylabel('fraction')
-        ax.text(-.4,1.05,string.ascii_uppercase[i*4],size=12,transform=ax.transAxes)
+        ax.text(-.4,1.05,string.ascii_lowercase[i*4],size=12,transform=ax.transAxes)
 
         xx,yy = np.meshgrid(np.arange(0,100)/8, np.arange(0,100)/8)
         for j in range(5):
@@ -496,7 +496,7 @@ def stim_distances(saveroot, save_figure=False):
                 ax.set_xlabel('stimulus direction ($^\circ$)')
             ax.set_yticks([0,.5,1.0])
             ax.set_ylim(-.25,1.1)
-            ax.text(-.4,1.05,string.ascii_uppercase[j+i*4+1],size=12,transform=ax.transAxes)
+            ax.text(-.4,1.05,string.ascii_lowercase[j+i*4+1],size=12,transform=ax.transAxes)
 
     d = np.load(os.path.join(saveroot, 'popdist.npy'), allow_pickle=True).item()
     cbinned, dtheta_aligned, embedding, cc, istim = d['cbinned'], d['dtheta_aligned'], d['embedding'], d['cc'], d['istim']
@@ -605,7 +605,7 @@ def pc_errors(saveroot, save_figure=False):
 
     grn = [0.5,0.1,0]
 
-    ax.text(labx, laby, string.ascii_uppercase[iplot], transform=ax.transAxes, size=12)
+    ax.text(labx, laby, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
     ax.axis('off')
     ax = fig.add_axes([xpos[0]-.03,ypos[1]-.05,bz,bz*yratio])
     nv = 1
@@ -629,7 +629,7 @@ def pc_errors(saveroot, save_figure=False):
     ax.set_xticks([0, 180, 360])
     ax.set_yticks([0, 180, 360])
     ax.text(-.3,1.1,'Test trials',size=6, transform=ax.transAxes)
-    ax.text(labx, laby, string.ascii_uppercase[iplot], transform=ax.transAxes, size=12)
+    ax.text(labx, laby, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
     iplot+=1
 
     ax = fig.add_axes([xpos[2],ypos[1],bz,bz*yratio])
@@ -640,7 +640,7 @@ def pc_errors(saveroot, save_figure=False):
     ax.set_xlabel(r'absolute angle error ($^\circ$)')
     ax.set_ylabel('trial counts')
     ax.set_xlim([0,20])
-    ax.text(labx, laby, string.ascii_uppercase[iplot], transform=ax.transAxes, size=12)
+    ax.text(labx, laby, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
 
     axins = fig.add_axes([xpos[2]+bz*.95, ypos[1]+bz*.7, .06,.06*yratio])
     axins.hist(merrors, 3, color=grn)
@@ -653,7 +653,7 @@ def pc_errors(saveroot, save_figure=False):
     cmap = plt.get_cmap('viridis')
     cmap = cmap(np.linspace(0,1,len(nPC)))
     ax = fig.add_axes([xpos[0],ypos[0],bz,bz*yratio])
-    ax.text(labx, laby,string.ascii_uppercase[iplot],size=12, transform=ax.transAxes)
+    ax.text(labx, laby,string.ascii_lowercase[iplot],size=12, transform=ax.transAxes)
     ax.axis('off')
     ax = fig.add_axes([xpos[0]-.03,ypos[0]-.05,bz,bz*yratio])
     nv = 7
@@ -677,7 +677,7 @@ def pc_errors(saveroot, save_figure=False):
     ax.set_ylabel('decoded angle ($^\circ$)')
     ax.set_xticks([0, 180, 360])
     ax.set_yticks([0, 180, 360])
-    ax.text(labx, laby,string.ascii_uppercase[iplot],size=12, transform=ax.transAxes)
+    ax.text(labx, laby,string.ascii_lowercase[iplot],size=12, transform=ax.transAxes)
     iplot+=1
 
     ax = fig.add_axes([xpos[2],ypos[0],bz,bz*yratio])
@@ -696,7 +696,7 @@ def pc_errors(saveroot, save_figure=False):
     ax.set_xticklabels(['4', '16','64', '256', '1024', '4096'], size=4)
     ax.set_xlim(nPC[0]-.5,nPC[-1]+1300)
     ax.set_ylim(0,8)
-    ax.text(labx, laby,string.ascii_uppercase[iplot],size=12, transform=ax.transAxes)
+    ax.text(labx, laby,string.ascii_lowercase[iplot],size=12, transform=ax.transAxes)
 
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
@@ -751,7 +751,7 @@ def discr_all(saveroot, save_figure=False):
         ax.set_xlabel('stimulus angle ($^\circ$)')
         ax.set_ylabel('% "choose right"')
         ax.set_title(ttl[k], size=6)
-        ax.text(-1,1.2, string.ascii_uppercase[k], size=12, transform=ax.transAxes)
+        ax.text(-1,1.2, string.ascii_lowercase[k], size=12, transform=ax.transAxes)
 
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
