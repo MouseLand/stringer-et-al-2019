@@ -135,13 +135,11 @@ def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi):
     if nangle==np.pi and istim.max() > np.pi:
         istim = np.remainder(istim.copy(), np.pi)
 
-    A, B, D, rez = fit_indep_model(sresp[:, itrain], istim[itrain], nbase, nangle=nangle)
-    apred, logL, B2, Kup = test_indep_model(sresp[:, itest], A, nbase, nangle=nangle)
+    A, vv, SNR = fit_indep_model(sresp[:, itrain], istim[itrain], nbase, nangle=nangle)
+    apred, logL, B2, Kup = test_indep_model(sresp[:, itest], A, vv, nbase, nangle=nangle)
 
     # single neuron tuning curves
     ypred = A.T @ B
-    # SNR
-    SNR = np.var(ypred, axis=1) / np.var(rez, axis=1)
 
     # preferred stimulus for each neuron
     theta_pref = istim[itrain][np.argmax(ypred, axis=1)]
@@ -152,7 +150,8 @@ def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi):
 
     return apred, error, ypred, logL, SNR, theta_pref
 
-def test_indep_model(X, A, nbase, xcoef=None, nangle=2*np.pi):
+
+def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi):
     # use GPU for optimization
     nodes = 32
     theta = np.linspace(0, nangle, nodes+1)[:-1]
@@ -167,8 +166,11 @@ def test_indep_model(X, A, nbase, xcoef=None, nangle=2*np.pi):
 
     logL = np.zeros((X.shape[1], nodes))
     for k in range(nodes):
-        rez = X - (A.T @ B[:, k])[:, np.newaxis]
-        logL[:, k] = -np.mean(rez**2, axis=0)
+        ypred = A.T @ B[:, k]
+        g = np.sum(ypred[:, np.newaxis] * X, axis=0) / np.sum(ypred**2, axis=0)
+
+        rez = X - g * ypred[:, np.newaxis]
+        logL[:, k] = -np.mean(rez**2, axis=0)/vv
 
     Kup = utils.upsampling_mat(nodes, int(3200/nodes), nodes/32)
     yup = logL @ Kup.T
@@ -176,7 +178,8 @@ def test_indep_model(X, A, nbase, xcoef=None, nangle=2*np.pi):
 
     return apred, logL, B, Kup
 
-def fit_indep_model(X, istim, nbase, nangle=2*np.pi):
+
+def fit_indep_model(X, istim, nbase, nangle=2*np.pi, lam = 1.):
     theta = istim.astype(np.float32)
     bubu = np.arange(0,nbase)[:, np.newaxis]
     F1 = np.cos(theta * bubu * (2*np.pi) / nangle)
@@ -186,10 +189,16 @@ def fit_indep_model(X, istim, nbase, nangle=2*np.pi):
     B = B[1:, :]
     D = D[1:, :]
     A = np.linalg.solve(B @ B.T, B @ X.T)
-    rez = X - A.T @ B
-    vexp = 1 - np.mean(rez**2, axis=1)
+    #rez = X - A.T @ B
 
-    return A, B, D, rez
+    ypred = A.T @ B
+    g = np.sum(ypred * X, axis=0) / np.sum(ypred**2, axis=0)
+    rez = X - g * ypred
+    vv = lam + np.var(rez, axis=1)
+
+    SNR = np.var(ypred, axis=1) / np.var(rez, axis=1)
+
+    return A, vv, SNR
 
 def rez_proj_diff(dTheta, rez, niter = 1):
     NN = rez.shape[0]
@@ -260,13 +269,6 @@ def get_pops(t0, A0, sresp, nth = 30):
         #pops[j, :] = np.mean(sresp[ix, :], axis=0)
     return pops
 
-<<<<<<< HEAD
-def vonmises_decoder(sresp, istim, itrain, itest, nangle=2*np.pi, lam=1, dcdtype='L2'):
-    ''' stim ids istim, neural responses sresp (NNxnstim)'''
-    ''' nangle = np.pi if orientations'''
-    nth = 48
-    sigma = 2 * np.pi / nangle * 0.1
-=======
 def nbasis_linear(fs, npc=0):
     """ how the decoding varies as a function of the number of basis functions """
     nbasis = [2, 5, 8, 10, 15, 20, 30, 48, 100]
@@ -276,7 +278,6 @@ def nbasis_linear(fs, npc=0):
         print('dataset %d'%i)
         dat = np.load(f, allow_pickle=True).item()
         sresp, istim, itrain, itest = utils.compile_resp(dat)
->>>>>>> a1b4f0758e6afa30d2d44d4a03c2700f375fdf72
 
         lam = 1
         nangle = 2 * np.pi
@@ -326,30 +327,23 @@ def linear_2d(fs, npc=0, lam=5):
         dat = np.load(f, allow_pickle=True).item()
         sresp, istim, itrain, itest = utils.compile_resp(dat)
 
-<<<<<<< HEAD
-
     # von mises
     y = np.exp((np.cos(theta0)-1) / sigma)
-=======
-        nangle = 2 * np.pi
-        X = sresp[:,itrain]
-        XtX = X @ X.T
->>>>>>> a1b4f0758e6afa30d2d44d4a03c2700f375fdf72
 
-        # cosine decoding
-        theta_pref = np.array([0.0])
-        theta0 = 2 * np.pi / nangle * istim[itrain,np.newaxis] - theta_pref[np.newaxis,:]
-        y = np.concatenate((np.cos(theta0[:,:1]), np.sin(theta0[:,:1])), axis=-1)
+    # cosine decoding
+    theta_pref = np.array([0.0])
+    theta0 = 2 * np.pi / nangle * istim[itrain,np.newaxis] - theta_pref[np.newaxis,:]
+    y = np.concatenate((np.cos(theta0[:,:1]), np.sin(theta0[:,:1])), axis=-1)
 
-        A = fast_ridge(X, y, lam=lam)
-        ypred = sresp[:,itest].T @ A
+    A = fast_ridge(X, y, lam=lam)
+    ypred = sresp[:,itest].T @ A
 
-        apred = np.arctan2(ypred[:,1], ypred[:,0])
-        error = istim[itest] - apred
-        error = np.remainder(error, nangle)
-        error[error > nangle/2] = error[error > nangle/2] - nangle
-        errors[i] = np.median(np.abs(error)) * 180/np.pi
-        print(errors[i])
+    apred = np.arctan2(ypred[:,1], ypred[:,0])
+    error = istim[itest] - apred
+    error = np.remainder(error, nangle)
+    error[error > nangle/2] = error[error > nangle/2] - nangle
+    errors[i] = np.median(np.abs(error)) * 180/np.pi
+    print(errors[i])
 
     return errors
 
