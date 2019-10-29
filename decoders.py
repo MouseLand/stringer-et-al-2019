@@ -131,15 +131,13 @@ def fast_ridge(X, y, lam=1):
     #w = np.squeeze(w)
     return w
 
-def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi):
+def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi, fitgain=False):
     if nangle==np.pi and istim.max() > np.pi:
         istim = np.remainder(istim.copy(), np.pi)
 
-    A, vv, SNR = fit_indep_model(sresp[:, itrain], istim[itrain], nbase, nangle=nangle)
-    apred, logL, B2, Kup = test_indep_model(sresp[:, itest], A, vv, nbase, nangle=nangle)
+    A, vv, SNR, ypred = fit_indep_model(sresp[:, itrain], istim[itrain], nbase, nangle=nangle, fitgain=fitgain)
+    apred, logL, B2, Kup = test_indep_model(sresp[:, itest], A, vv, nbase, nangle=nangle, fitgain=fitgain)
 
-    # single neuron tuning curves
-    ypred = A.T @ B
 
     # preferred stimulus for each neuron
     theta_pref = istim[itrain][np.argmax(ypred, axis=1)]
@@ -151,7 +149,7 @@ def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi):
     return apred, error, ypred, logL, SNR, theta_pref
 
 
-def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi):
+def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi, fitgain=fitgain):
     # use GPU for optimization
     nodes = 32
     theta = np.linspace(0, nangle, nodes+1)[:-1]
@@ -166,11 +164,12 @@ def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi):
 
     logL = np.zeros((X.shape[1], nodes))
     for k in range(nodes):
-        ypred = A.T @ B[:, k]
-        g = np.sum(ypred[:, np.newaxis] * X, axis=0) / np.sum(ypred**2, axis=0)
-
-        rez = X - g * ypred[:, np.newaxis]
-        logL[:, k] = -np.mean(rez**2, axis=0)/vv
+        ypred = (A.T @ B[:, k])[:, np.newaxis]
+        if fitgain:
+            g     = np.sum(ypred * X, axis=0) / np.sum(ypred**2, axis=0)
+            ypred = g * ypred
+        rez = X - ypred
+        logL[:, k] = -np.mean(rez**2/vv[:, np.newaxis], axis=0)
 
     Kup = utils.upsampling_mat(nodes, int(3200/nodes), nodes/32)
     yup = logL @ Kup.T
@@ -179,7 +178,7 @@ def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi):
     return apred, logL, B, Kup
 
 
-def fit_indep_model(X, istim, nbase, nangle=2*np.pi, lam = 1.):
+def fit_indep_model(X, istim, nbase, nangle=2*np.pi, lam = .001, fitgain=fitgain):
     theta = istim.astype(np.float32)
     bubu = np.arange(0,nbase)[:, np.newaxis]
     F1 = np.cos(theta * bubu * (2*np.pi) / nangle)
@@ -192,13 +191,16 @@ def fit_indep_model(X, istim, nbase, nangle=2*np.pi, lam = 1.):
     #rez = X - A.T @ B
 
     ypred = A.T @ B
-    g = np.sum(ypred * X, axis=0) / np.sum(ypred**2, axis=0)
-    rez = X - g * ypred
-    vv = lam + np.var(rez, axis=1)
+    if fitgain:
+        g = np.sum(ypred * X, axis=0) / np.sum(ypred**2, axis=0)
+        ypred = g * ypred
+    rez = X - ypred
+    vv = lam + 1.*np.var(rez, axis=1)
+    print(np.mean(vv))
 
     SNR = np.var(ypred, axis=1) / np.var(rez, axis=1)
 
-    return A, vv, SNR
+    return A, vv, SNR, ypred
 
 def rez_proj_diff(dTheta, rez, niter = 1):
     NN = rez.shape[0]
