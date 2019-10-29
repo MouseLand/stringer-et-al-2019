@@ -149,7 +149,7 @@ def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi, f
     return apred, error, ypred, logL, SNR, theta_pref
 
 
-def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi, fitgain=fitgain):
+def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi, fitgain=False):
     # use GPU for optimization
     nodes = 32
     theta = np.linspace(0, nangle, nodes+1)[:-1]
@@ -178,7 +178,7 @@ def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi, fitgain=fitgai
     return apred, logL, B, Kup
 
 
-def fit_indep_model(X, istim, nbase, nangle=2*np.pi, lam = .001, fitgain=fitgain):
+def fit_indep_model(X, istim, nbase, nangle=2*np.pi, lam = .001, fitgain=False):
     theta = istim.astype(np.float32)
     bubu = np.arange(0,nbase)[:, np.newaxis]
     F1 = np.cos(theta * bubu * (2*np.pi) / nangle)
@@ -196,7 +196,6 @@ def fit_indep_model(X, istim, nbase, nangle=2*np.pi, lam = .001, fitgain=fitgain
         ypred = g * ypred
     rez = X - ypred
     vv = lam + 1.*np.var(rez, axis=1)
-    print(np.mean(vv))
 
     SNR = np.var(ypred, axis=1) / np.var(rez, axis=1)
 
