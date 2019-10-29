@@ -3,14 +3,51 @@ from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter1d
 from sklearn.decomposition import PCA
 from scipy.optimize import curve_fit
-from scipy.stats import linregress
+from sklearn.linear_model import LinearRegression
 
-def fit_asymptote(x, y):
+def fit_asymptote(x, y, xall, fitexp=False):
     ''' fit y = alpha + beta / sqrt(x)'''
-    xi = x**-0.5
-    print(xi)
-    beta, alpha, r2, _, _ = linregress(xi, y)
-    return alpha, beta, r2**2
+    xi = x.copy()**-0.5
+    if xi.ndim < 2:
+        xi = xi[:,np.newaxis]
+        xall = xall[:,np.newaxis]
+    reg = LinearRegression().fit(xi, y)
+    beta = reg.coef_
+    alpha = reg.intercept_
+    r2 = reg.score(xi, y)
+    if not fitexp:
+        ypred = alpha + np.dot(xall**-0.5, beta)
+        par = [alpha]
+        for b in beta:
+            par.append(b)
+        return par, r2, ypred
+    if xi.shape[1]==1:
+        par0 = [alpha, beta[0], 0.5]
+        f = asymp
+    else:
+        par0 = [alpha, beta[0], beta[1], 0.5, 0.5]
+        f = asymp2
+    par, mcov = curve_fit(f, x, y, par0)
+
+    if xi.shape[1]==1:
+        ypred = asymp(x, par[0], par[1], par[2])
+    else:
+        ypred = asymp2(x.T, par[0], par[1], par[2], par[3], par[4])
+    r2 = np.corrcoef(ypred, y)[0,1]
+    print(par, r2)
+    if xi.shape[1]==1:
+        ypred = asymp(xall, par[0], par[1], par[2])
+    else:
+        ypred = asymp2(xall.T, par[0], par[1], par[2], par[3], par[4])
+    return par, r2**2, ypred
+
+def asymp(x, alpha, beta, t1):
+    y = alpha + beta / x**t1
+    return y
+
+def asymp2(x, alpha, beta, gamma, t1, t2):
+    y = alpha + beta / x[0]**t1 + gamma / x[1]**t2
+    return y
 
 
 def discrimination_threshold(P, x):
@@ -58,7 +95,7 @@ def resample_frames(data, torig, tout):
     dout = f(tout)
     return dout
 
-def compile_resp(dat, nskip=4, npc=0):
+def compile_resp(dat, nskip=4, npc=0, zscore=True):
     istim = dat['istim']
     # split stims into test and train
     itest = np.zeros((istim.size,), np.bool)
@@ -67,16 +104,18 @@ def compile_resp(dat, nskip=4, npc=0):
     itrain[itest] = 0
     itrain = itrain.nonzero()[0]
     itest = np.nonzero(itest)[0]
-
-    # subtract off spont PCs
-    sresp = (dat['sresp'].copy() - dat['mean_spont'][:,np.newaxis]) / dat['std_spont'][:,np.newaxis]
-    if npc > 0:
-        sresp = sresp - dat['u_spont'][:,:npc] @ (dat['u_spont'][:,:npc].T @ sresp)
-    sresp = sresp[:,:istim.size]
-    # zscore sresp across stimuli (so each neuron has mean 0 / std 1 responses)
-    ssub0 = sresp.mean(axis=1)
-    sstd0 = sresp.std(axis=1) + 1e-6
-    sresp = (sresp - ssub0[:,np.newaxis]) / sstd0[:,np.newaxis]
+    if zscore:
+        # subtract off spont PCs
+        sresp = (dat['sresp'].copy() - dat['mean_spont'][:,np.newaxis]) / dat['std_spont'][:,np.newaxis]
+        if npc > 0:
+            sresp = sresp - dat['u_spont'][:,:npc] @ (dat['u_spont'][:,:npc].T @ sresp)
+        sresp = sresp[:,:istim.size]
+        # zscore sresp across stimuli (so each neuron has mean 0 / std 1 responses)
+        ssub0 = sresp.mean(axis=1)
+        sstd0 = sresp.std(axis=1) + 1e-6
+        sresp = (sresp - ssub0[:,np.newaxis]) / sstd0[:,np.newaxis]
+    else:
+        sresp = dat['sresp'].copy()
     return sresp, istim, itrain, itest
 
 def stripe_split(ypos, nstrips):
@@ -89,7 +128,6 @@ def stripe_split(ypos, nstrips):
     ytest  = ytest.flatten()
     n2     = (ypos[:,np.newaxis] == ytest[np.newaxis,:]).sum(axis=1).nonzero()[0]
     return n1, n2
-
 
 def get_powerlaw(ss, trange):
     logss = np.log(np.abs(ss))
