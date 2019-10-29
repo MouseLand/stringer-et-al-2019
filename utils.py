@@ -16,13 +16,13 @@ def fit_asymptote(x, y):
 def discrimination_threshold(P, x):
     P = (P + 1-P[::-1])/2
     par0 = np.array([5])
-    par, mcov = curve_fit(logistic, x, P, par0)    
+    par, mcov = curve_fit(logistic, x, P, par0)
     p75 = - np.log(1/0.75 - 1) * par[0]
     return p75, logistic(x, par)
 
 # psychometric function
 def logistic(x, beta):
-    return 1. / (1 + np.exp( -x / beta )) 
+    return 1. / (1 + np.exp( -x / beta ))
 
 def upsampling_mat(ntot, upfactor = 100, sig = 1):
     xs = np.arange(0, ntot)
@@ -99,7 +99,7 @@ def get_powerlaw(ss, trange):
     x = np.concatenate((-np.log(trange)[:,np.newaxis], np.ones((nt,1))), axis=1)
     w = 1.0 / trange.astype(np.float32)[:,np.newaxis]
     b = np.linalg.solve(x.T @ (x * w), (w * x).T @ y).flatten()
-    
+
     allrange = np.arange(0, ss.size).astype(int) + 1
     x = np.concatenate((-np.log(allrange)[:,np.newaxis], np.ones((ss.size,1))), axis=1)
     ypred = np.exp((x * b).sum(axis=1))
@@ -111,11 +111,12 @@ def shuff_cvPCA(X, nshuff=10):
     nc = min(1024, X.shape[1])
     ss=np.zeros((nshuff,nc))
     for k in range(nshuff):
-        iflip = np.random.rand(len(is1)) > 0.5
-        X0 = X.copy()
+        iflip = np.random.rand(X.shape[1]) > 0.5
+        X0 = np.float64(X.copy())
         X0[0,iflip] = X[1,iflip]
         X0[1,iflip] = X[0,iflip]
-        ss[k]=utils.cvPCA(X0)
+
+        ss[k]=cvPCA(X0)
     return ss
 
 def cvPCA(X):
@@ -123,7 +124,7 @@ def cvPCA(X):
     pca = PCA(n_components=min(1024, X.shape[1])).fit(X[0].T)
     u = pca.components_.T
     sv = pca.singular_values_
-    
+
     xproj = X[0].T @ (u / sv)
     cproj0 = X[0] @ xproj
     cproj1 = X[1] @ xproj
@@ -161,7 +162,7 @@ def SVCA(X):
     u /= (u**2).sum(axis=0)**0.5
     v = cov.T @ u
     v /= (v**2).sum(axis=0)**0.5
-    
+
     strain = u.T @ X[np.ix_(ntrain,ttest)]
     stest = v.T @ X[np.ix_(ntest,ttest)]
 

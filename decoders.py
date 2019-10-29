@@ -183,10 +183,11 @@ def vonmises_decoder(sresp, istim, itrain, itest, nangle=2*np.pi, lam=1, dcdtype
     ''' stim ids istim, neural responses sresp (NNxnstim)'''
     ''' nangle = np.pi if orientations'''
     nth = 48
-    sigma = 0.05 * 2
+    sigma = 2 * np.pi / nangle * 0.1
 
     theta_pref = np.linspace(0,2*np.pi,nth+1)[:-1]
     theta0 = 2 * np.pi / nangle * istim[itrain,np.newaxis] - theta_pref[np.newaxis,:]
+
 
     # von mises
     y = np.exp((np.cos(theta0)-1) / sigma)
