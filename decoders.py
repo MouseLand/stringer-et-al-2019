@@ -135,7 +135,7 @@ def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi, f
     if nangle==np.pi and istim.max() > np.pi:
         istim = np.remainder(istim.copy(), np.pi)
 
-    A, vv, SNR, ypred = fit_indep_model(sresp[:, itrain], istim[itrain], nbase, nangle=nangle, fitgain=fitgain)
+    A, B, vv, SNR, ypred = fit_indep_model(sresp[:, itrain], istim[itrain], nbase, nangle=nangle, fitgain=fitgain)
     apred, logL, B2, Kup = test_indep_model(sresp[:, itest], A, vv, nbase, nangle=nangle, fitgain=fitgain)
 
 
@@ -146,7 +146,7 @@ def independent_decoder(sresp, istim, itrain, itest, nbase=10, nangle=2*np.pi, f
     error = np.remainder(error,nangle)
     error[error > nangle/2] = error[error > nangle/2] - nangle
 
-    return apred, error, ypred, logL, SNR, theta_pref
+    return apred, error, ypred, logL, SNR, theta_pref, A, B, B2
 
 
 def test_indep_model(X, A, vv, nbase, xcoef=None, nangle=2*np.pi, fitgain=False):
@@ -199,7 +199,7 @@ def fit_indep_model(X, istim, nbase, nangle=2*np.pi, lam = .001, fitgain=False):
 
     SNR = np.var(ypred, axis=1) / np.var(rez, axis=1)
 
-    return A, vv, SNR, ypred
+    return A, B, vv, SNR, ypred
 
 def rez_proj_diff(dTheta, rez, niter = 1):
     NN = rez.shape[0]
@@ -766,6 +766,38 @@ def dense_asymptotics(fs, lam=1, npc=0):
 
 
     return Eneur, Estim, npop, nstim
+
+def run_independent_and_gain(fs, npc=0):
+    E = np.zeros((2, len(fs)))
+    ccE = np.zeros((2, 2, len(fs)))
+    nsplit = np.zeros((len(fs),), 'int')
+    nstrips = 8
+
+    for t,f in enumerate(fs):
+        dat = np.load(f, allow_pickle=True).item()
+
+        sresp, istim, itrain, itest = utils.compile_resp(dat, npc=npc)
+        ypos = np.array([dat['stat'][j]['med'][0] for j in range(len(dat['stat']))])
+
+        # split neurons for decoder into strips (no Z overlap between two sets)
+        NN = sresp.shape[0]
+        np.random.seed(seed = 101)
+        iNN = np.random.permutation(NN)
+        
+        for fitgain in [0,1]:
+            error = independent_decoder(sresp[iNN, :], istim, itrain, itest, fitgain=fitgain)[1]
+            E[fitgain,t] = np.median(np.abs(error)) * 180/np.pi
+            print('%s error=%2.2f'%(os.path.basename(f), E[fitgain,t] ))
+            n1, n2 = utils.stripe_split(ypos[iNN], nstrips)
+            err1 = independent_decoder(sresp[iNN[n1]], istim, itrain, itest, fitgain=fitgain)[1]
+            err2 = independent_decoder(sresp[iNN[n2]], istim, itrain, itest, fitgain=fitgain)[1]
+
+            ccE[fitgain,0,t] = np.corrcoef(err1, err2)[0,1]
+            ccE[fitgain,1,t] = spearmanr(err1, err2)[0]
+            print(ccE[fitgain,1,t])
+            
+    return E, ccE
+
 
 def asymptotics(fs, linear=True, npc=0):
     nskip = 2**np.linspace(0, 10, 21)

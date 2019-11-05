@@ -333,7 +333,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     dat = np.load(os.path.join(dataroot, 'gratings_static_TX39_2019_05_02_1.npy'), allow_pickle=True).item()
     sresp, istim, itrain, itest = utils.compile_resp(dat)
 
-    d = np.load(os.path.join(saveroot, 'independent_decoder_asymp.npy'), allow_pickle=True).item()
+    d = np.load(os.path.join(saveroot, 'independent_decoder_and_gain.npy'), allow_pickle=True).item()
     E = d['E']
     ccE = d['ccE']
 
@@ -345,15 +345,12 @@ def fig2(dataroot, saveroot, save_figure=False):
     nangle = 2*np.pi
 
     ssi = itrain
-    apred1, err1, ypred1, logL1, SNR, theta_pref = decoders.independent_decoder(sresp[n1,:], istim, itrain, itest)
-    apred2, err2, ypred2, logL2, SNR, theta_pref = decoders.independent_decoder(sresp[n2,:], istim, itrain, itest)
-    #A, B, D, rez        =  decoders.fit_indep_model(sresp[np.ix_(n1, ssi)], istim[ssi], nbase)
-    #apred1, logL1, B2, Kup = decoders.test_indep_model(sresp[np.ix_(n1,itest)], A, nbase)
-
-    nbase=10
-    Apred, error, ypred, logL, SNR, theta_pref = decoders.independent_decoder(sresp, istim, itrain, itest)
-    A, B, D, rez = decoders.fit_indep_model(sresp[:, itrain], istim[itrain], nbase)
-    apred, logL, B2, Kup = decoders.test_indep_model(sresp[:, itest], A, nbase)
+    apred1, err1, ypred1, logL1, SNR, theta_pref, A, B, B2 = decoders.independent_decoder(sresp[n1,:], istim, itrain, itest)
+    apred2, err2, ypred2, logL2, SNR, theta_pref, A, B, B2 = decoders.independent_decoder(sresp[n2,:], istim, itrain, itest)
+    Apred, error, ypred, logL, SNR, theta_pref, A, B, B2 = decoders.independent_decoder(sresp, istim, itrain, itest)
+    apred = Apred
+    #A, B, D, rez = decoders.fit_indep_model(sresp[:, itrain], istim[itrain], nbase)
+    #apred, logL, B2, Kup = decoders.test_indep_model(sresp[:, itest], A, nbase)
     print(np.median(np.abs(error)) * 180/np.pi)
     Apred = A.T @ B2
     RS = spearmanr(err1, err2)
@@ -397,7 +394,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     bzx = 0.07
     bzy = 0.11
     lrange = [-7,1]
-    larange= [-.8, -.4]
+    larange= [-.65, -.4]
     ymax=9
     berry = [.7,.2,.5]
 
@@ -486,7 +483,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     ax.set_xlim([0,20])
     ax.text(-.5, ylab, string.ascii_lowercase[2], transform=ax.transAxes, size=12)
     axins = fig.add_axes([xpos[1]+bz*1., ypos[1]+bz*1, .04,.04*yratio])
-    axins.hist(E[0,0,:], 3, color=berry)
+    axins.hist(E[0,:], 3, color=berry)
     axins.set_xlabel('median error')
     axins.set_ylabel('recordings')
     axins.set_yticks([0,3])
@@ -500,6 +497,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     ax.text(0.7, -0.3, 'population 1', va='top', rotation=270, color=col1, size=6, transform=ax.transAxes)
     ax.axis('off')
 
+    larange= [-.9, -.4]
     ax = fig.add_axes([xpos[0], ypos[0]+bz*1.3, bz, bz*1.1])
     logup1 = logL1[itest_trial, :] @ Kup.T
     logup2 = logL2[itest_trial, :] @ Kup.T
@@ -522,7 +520,7 @@ def fig2(dataroot, saveroot, save_figure=False):
     ax.set_ylabel('avg logL')
     ax.plot(np.array([1,1]) * 180/np.pi * istim[ind_trial], larange, '--', color='k',linewidth=1)
     ax.set_xlim(xx)
-    ax.set_ylim(-.6,-.4)
+    ax.set_ylim(-.75,-.49)
     yy = [-2,2]
     ax.fill([xx[0], xx[1], xx[1], xx[0]], [yy[0], yy[0], yy[1], yy[1]], color=[.7, .7, .7], alpha=0.3)
 
@@ -739,189 +737,179 @@ def fig3(dataroot, saveroot, save_figure=False):
 def fig4(dataroot, saveroot, save_figure=False):
     rc('font', **{'size': 6})#, 'family':'sans-serif'})#,'sans-serif':['Helvetica']})
 
-    fig = plt.figure(figsize=(6.85,2.85),facecolor='w',frameon=True, dpi=300)
-    yratio = 6.25 / 2.85
+    fig = plt.figure(figsize=(6.85,4),facecolor='w',frameon=True, dpi=300)
+    yratio = 6.85 / 4
     my_green = [0, .5 , 0]
     iplot=0
 
     from skimage.transform import rotate
-    ang = [43,45,47]
-    angs = [np.pi/4-2*np.pi/180, np.pi/4, np.pi/4+2*np.pi/180]
-    x0 = 0.06
-    y0 = .69
-    dy = 0.3
-    for k in range(3):
-        ax = fig.add_axes([x0, y0, .1, .1 * yratio])
-        xx,yy = np.meshgrid(np.arange(0,2000)/60, np.arange(0,2000)/60)
+    ang = [43,46]
+    angs = [np.pi/4-2*np.pi/180, np.pi/4, np.pi/4+1*np.pi/180]
+    x0 = 0.1
+    yi = [.82, .66]
+    for k in range(2):
+        ax = fig.add_axes([x0, yi[k], .1, .1 * yratio*3/4])
+        xx,yy = np.meshgrid(np.arange(0,4000)/120, np.arange(0,3000)/120)
         gratings = np.cos(xx*np.cos(angs[k]) + yy*np.sin(angs[k]))
         ax.imshow(np.sign(gratings), cmap=plt.get_cmap('gray'))
         ax.axis('off')
-        ax.text(-.4, .5, '%d$^\circ$'%ang[k], transform=ax.transAxes)
+        ax.text(-.7, .5, 'trial %d: %d$^\circ$'%(k+1,ang[k]), transform=ax.transAxes)
         if k==0:
-            ax.text(-0.2,1.2,'Angle > 45$^\circ$?', transform=ax.transAxes, fontsize=8)
-            ax.text(-.45, 1.19, string.ascii_lowercase[iplot], transform=ax.transAxes,
+            ax.text(-0.6,1.23, 'Angle > 45$^\circ$?', transform=ax.transAxes, fontsize=8)
+            ax.text(-.9, 1.23, string.ascii_lowercase[iplot], transform=ax.transAxes,
                     size=12)
-        y0 -= dy
+        else:
+            ax.text(-.7,-.4, '... x4000 trials', transform=ax.transAxes)
     iplot+=1
 
-    d = np.load(os.path.join(saveroot, 'dense_discrimination.npy'), allow_pickle=True).item()
-    drange2 = d['drange']
-    Pall = d['Pall']#.mean(axis=-1)
-    Pall = (Pall + 1-Pall[..., ::-1, :])/2
-    ns,nn,_,nf = Pall.shape
-    pd75 = np.zeros((ns,nn,nf))
-    for m in range(ns):
-        for k in range(nn):
-            for t in range(nf):
-                pd75[m,k,t] = utils.discrimination_threshold(Pall[m,k,:,t], drange2)[0]
-    nstim = d['nstim'].mean(axis=-1)
-    npop = d['npop'].mean(axis=-1)
-    Y,X=np.meshgrid(npop[:-8], nstim[:-8])
-    Z = pd75[:-8,:-8]#[::-1,::-1]
-    # fit to stim and neurons
-    pp = 8#Z.shape[0]
-    yy,xx = np.meshgrid(np.arange(0,Z.shape[0], 1, int), np.arange(0,Z.shape[0], 1, int))
-    igood = (yy.flatten() + xx.flatten()) < pp
-    x = np.concatenate((X.flatten()[:,np.newaxis]/4,
-                        Y.flatten()[:,np.newaxis]), axis=-1)
+    dstr= ['', '_V2']
+    y00 = [.62, .12]
+    xi = [.68, .87, .68, .87]
+    yi = [[.76, .76, .45, .45], [.08, .08]]
+    nplots = [4, 2]
+    iplott=[1,3]
+    iplott2 = [[4,5], [6]]
+    cols = [[0.5, .3, .1], [.8, .2, .6]]
+    tstr = ['primary visual cortex', 'higher-order visual areas']
+    for kk in range(2):
+        col = cols[kk]
+        if kk==1:
+            ax = fig.add_axes([-.01, .0, .3, .3*yratio])
+            reti = plt.imread(os.path.join(dataroot, 'reti.png'))
+            ax.imshow(reti)
+            ax.axis('off')
 
-    y = Z.mean(axis=-1).flatten()
-    x = x[igood]
-    print(x.size)
-    y = y[igood]
-    Ya,Xa=np.meshgrid(npop, nstim)
-    xall = np.concatenate((Xa.flatten()[:,np.newaxis]/4,
-                           Ya.flatten()[:,np.newaxis]), axis=-1)
-    par, r2, ypred = utils.fit_asymptote(x, y, xall)
-    ypred = np.reshape(ypred, Xa.shape)
+        d = np.load(os.path.join(saveroot, 'dense_discrimination%s.npy'%dstr[kk]), allow_pickle=True).item()
+        drange2 = d['drange']
+        nstim = d['nstim'].mean(axis=-1)
+        npop = d['npop'].mean(axis=-1)
+        Pall = d['Pall']#.mean(axis=-1)
+        Pall = (Pall + 1-Pall[..., ::-1, :])/2
+        ns,nn,_,nf = Pall.shape
+        pd75 = np.zeros((ns,nn,nf))
+        for m in range(ns):
+            for k in range(nn):
+                for t in range(nf):
+                    pd75[m,k,t] = utils.discrimination_threshold(Pall[m,k,:,t], drange2)[0]
+        Y,X=np.meshgrid(npop[:-8], nstim[:-8])
+        Z = pd75[:-8,:-8]#[::-1,::-1]
+        # fit to stim and neurons
+        pp = 8#Z.shape[0]
+        yy,xx = np.meshgrid(np.arange(0,Z.shape[0], 1, int), np.arange(0,Z.shape[0], 1, int))
+        igood = (yy.flatten() + xx.flatten()) < pp
+        x = np.concatenate((X.flatten()[:,np.newaxis]/4,
+                            Y.flatten()[:,np.newaxis]), axis=-1)
 
-    x0 = .28
-    xs = 0.16
-    ys = xs * yratio
-    y0 = .6
-    dx = xs+0.05
-    dy = .45
-    col = [0.5, .3, .1]
-    ax = fig.add_axes([x0, y0, xs, ys])
-    pn = Pall[0,0].mean(axis=-1)
-    semy = Pall[0,0].std(axis=-1) / Pall.shape[-1]**.5
-    p75,pf = utils.discrimination_threshold(Pall[0,0].mean(axis=-1), drange2)
-    nx = drange2
-    ax.plot(nx,100*pf, color=col, lw=0.5)
-    ax.scatter(nx, 100*pn, color=col, s=2)
-    ax.fill_between(nx, 100*(pn-semy), 100*(pn+semy), facecolor=col, alpha=0.5)
-    ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
-    ax.plot([-25,p75], [75,75], '--', color='k')
-    plt.text(.05, .95 , 'training set=\n830 trials/deg', transform=(plt.gca()).transAxes,
-             color=col)
-    ax.text(p75+.1, 2, '%2.2f$^\circ$=\ndiscrimination\nthreshold'%p75, fontsize=6)
-    ax.set_ylim([-1, 101])
-    ax.set_yticks([0,25,50,75,100])
-    ax.set_xlim([-2, 2])
+        y = Z.mean(axis=-1).flatten()
+        x = x[igood]
+        print(x.size)
+        y = y[igood]
+        Ya,Xa=np.meshgrid(npop, nstim)
+        xall = np.concatenate((Xa.flatten()[:,np.newaxis]/4,
+                               Ya.flatten()[:,np.newaxis]), axis=-1)
+        par, r2, ypred = utils.fit_asymptote(x, y, xall)
+        ypred = np.reshape(ypred, Xa.shape)
 
-    ax.set_ylabel('% "choose right"')#,fontsize=14)
-    ax.set_xlabel('angle difference  ($^\circ$)')#,fontsize=14)
-    #ax.set_position(ax.get_position().bounds - np.array([.13, -.2, 0.04, 0.04]))
-    ax.text(-.45, 1.0, string.ascii_lowercase[iplot], transform=ax.transAxes,
-                size=12)
-    iplot+=1
-
-    y0 -= dy+.015
-    dy = .5
-    dx = .33
-    xs = .13
-    ys = xs * yratio
-    ax = fig.add_axes([x0, y0, xs+.03, ys])
-    im = ax.pcolor(X, Y, Z.mean(axis=-1), norm=LogNorm())
-    ax.add_patch(Polygon([[X[0,0]-3e2,Y[0,0]-2e3],[X[0,0]-3e2,Y[0,pp]],
-                         [X[pp,0],Y[0,0]-2e3]], #[X[pp,0],Y[0,pp]]
-                         fill=None, lw=2, ls='--'))
-    ax.text(-.35,1.03,'discrimination threshold ($^\circ$)', fontsize=6, transform=ax.transAxes)
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_xlabel('trials / deg ')
-    ax.set_ylabel('neurons')
-    cbar = fig.colorbar(im, ticks=[0.5, 1, 2])
-    cbar.ax.set_yticklabels(['0.5', '1.0', '2.0'])
-    ax.text(-.6, 1.0, string.ascii_lowercase[iplot], transform=ax.transAxes,
-                    size=12)
-
-    d = np.load(os.path.join(saveroot, 'dense_decoding.npy'), allow_pickle=True).item()
-    Eneur = d['Eneur']
-    Estim = d['Estim']
-
-    x0 += dx
-    xinit = x0
-    dx = .23
-    y0 = .65
-    dy = .5
-    xs = .12
-    ys = xs * yratio
-    for k in range(4):
-        print(x0)
+        x0 = .35
+        xs = 0.2
+        ys = xs * yratio
+        y0 = y00[kk]
         ax = fig.add_axes([x0, y0, xs, ys])
-        if k==0:
-            iplot+=1
-            mux = pd75[:,0].mean(axis=-1)
-            sdx = pd75[:,0].std(axis=-1) / (4**.5)
-            nx = nstim.copy()/4
-        elif k==1:
-            mux = pd75[0,:].mean(axis=-1)
-            sdx = pd75[0,:].std(axis=-1) / (4**.5)
-            nx = npop
-        elif k==2:
-            iplot+=1
-            mux = 1 / (Estim).mean(axis=1)
-            sdx = (1 / Estim).std(axis=1) / (4**.5)
-            nx = d['nstim'].mean(axis=-1)/4
-        elif k==3:
-            mux = 1 / (Eneur).mean(axis=1)
-            sdx = (1 / Eneur).std(axis=1) / (4**.5)
-            nx = d['npop'].mean(axis=-1)
+        pn = Pall[0,0].mean(axis=-1)
+        semy = Pall[0,0].std(axis=-1) / Pall.shape[-1]**.5
+        p75,pf = utils.discrimination_threshold(Pall[0,0].mean(axis=-1), drange2)
+        nx = drange2
+        ax.plot(nx,100*pf, color=col, lw=0.5)
+        ax.scatter(nx, 100*pn, color=col, s=2)
+        ax.fill_between(nx, 100*(pn-semy), 100*(pn+semy), facecolor=col, alpha=0.5)
+        ax.plot(p75*np.array([1,1]), [-1,75], '--', color='k')
+        ax.plot([-25,p75], [75,75], '--', color='k')
+        ax.text(0, 1.05, tstr[kk], fontsize=8,
+                transform = ax.transAxes, color=col)
+        ax.text(.05, .85 , 'training set=\n830 trials/deg', transform=ax.transAxes,
+                 color=col)
+        ax.text(p75+.1, 2, '%2.2f$^\circ$=\ndiscrimination\nthreshold'%p75, fontsize=6)
+        ax.set_ylim([-1, 101])
+        ax.set_yticks([0,25,50,75,100])
+        ax.set_xlim([-2, 2])
 
-        ax.semilogx(nx, mux, color = [.5, .3, .1], linewidth=1)
-        ax.scatter(nx, mux, color = [.5, .3, .1], s=1)
-        ax.fill_between(nx, mux-sdx, mux+sdx, facecolor=[.5, .3, .1], alpha=0.5)
-        ax.tick_params(axis='x', which='minor', bottom=False)
-        if k<2:
-            #alpha,beta,r2 = utils.fit_asymptote(nx[::-1][-10:], mux[::-1][-10:])
+        ax.set_ylabel('% "choose right"')#,fontsize=14)
+        ax.set_xlabel('angle difference  ($^\circ$)')#,fontsize=14)
+        #ax.set_position(ax.get_position().bounds - np.array([.13, -.2, 0.04, 0.04]))
+        ax.text(-.3, 1.05, string.ascii_lowercase[iplott[kk]], transform=ax.transAxes,
+                    size=12)
+        iplot+=1
+
+        d = np.load(os.path.join(saveroot, 'dense_decoding%s.npy'%dstr[kk]), allow_pickle=True).item()
+        Eneur = d['Eneur']
+        Estim = d['Estim']
+
+
+        xs = .12
+        ys = xs * yratio
+
+        for k in range(nplots[kk]):
+            print(x0)
+            ax = fig.add_axes([xi[k], yi[kk][k], xs, ys])
             if k==0:
-                ax.semilogx(nx, ypred[:,0], '--', lw=1.5, color='k')
-                #ax.semilogx(nx, alpha + beta[1] / np.sqrt(npop[0]) +
-                #        beta[0] / np.sqrt(nx), '--', lw=1.5, color='k')
-                dyy=0.2
-                ax.text(.6,.85+dyy, r'$\alpha + \frac{\beta}{\sqrt{N}} + \frac{\gamma}{\sqrt{T}}$',
-                        transform=ax.transAxes,size=8)
-                ax.text(.9,.6+dyy,r'$\alpha$=%2.2f$^{\circ}$'%par[0], transform=ax.transAxes)
-                ax.text(.9,.48+dyy, r'$\beta$=%2.0f$^{\circ}$'%par[1], transform=ax.transAxes)
-                ax.text(.9,.36+dyy, r'$\gamma$=%2.0f$^{\circ}$'%par[2], transform=ax.transAxes)
-                #ax.text(0.05,.05, 'asymptote', transform=ax.transAxes, fontsize=6, color='r')
-                ax.set_ylabel('discrimination\nthreshold ($^{\circ}$)')
+                iplot+=1
+                mux = pd75[:,0].mean(axis=-1)
+                sdx = pd75[:,0].std(axis=-1) / ((pd75.shape[-1]-1)**.5)
+                nx = nstim.copy()/4
+            elif k==1:
+                mux = pd75[0,:].mean(axis=-1)
+                sdx = pd75[0,:].std(axis=-1) / ((pd75.shape[-1]-1)**.5)
+                nx = npop
+            elif k==2:
+                iplot+=1
+                mux = 1 / (Estim**2).mean(axis=1)
+                frac_std = (Estim**2).std(axis=-1) / (Estim**2).mean(axis=-1)
+                sdx = mux * frac_std / ((pd75.shape[-1]-1)**.5)
+                nx = d['nstim'].mean(axis=-1)/4
+            elif k==3:
+                mux = 1 / (Eneur**2).mean(axis=1)
+                frac_std = (Eneur**2).std(axis=-1) / (Eneur**2).mean(axis=-1)
+                sdx = mux * frac_std / ((pd75.shape[-1]-1)**.5)
+                nx = d['npop'].mean(axis=-1)
+
+            ax.semilogx(nx, mux, color =col, linewidth=1)
+            ax.scatter(nx, mux, color =col, s=1)
+            ax.fill_between(nx, mux-sdx, mux+sdx, facecolor=col, alpha=0.5)
+            ax.tick_params(axis='x', which='minor', bottom=False)
+            if k<2:
+                #alpha,beta,r2 = utils.fit_asymptote(nx[::-1][-10:], mux[::-1][-10:])
+                if k==0:
+                    ax.semilogx(nx, ypred[:,0], '--', lw=1.5, color='k')
+                    #ax.semilogx(nx, alpha + beta[1] / np.sqrt(npop[0]) +
+                    #        beta[0] / np.sqrt(nx), '--', lw=1.5, color='k')
+                    dyy=0.2
+                    ax.text(.5,.85+dyy, r'$\alpha + \frac{\beta}{\sqrt{N}} + \frac{\gamma}{\sqrt{T}}$',
+                            transform=ax.transAxes,size=8)
+                    ax.text(.8,.6+dyy,r'$\alpha$=%2.2f$^{\circ}$'%par[0], transform=ax.transAxes)
+                    ax.text(.8,.48+dyy, r'$\beta$=%2.0f$^{\circ}$'%par[1], transform=ax.transAxes)
+                    ax.text(.8,.36+dyy, r'$\gamma$=%2.0f$^{\circ}$'%par[2], transform=ax.transAxes)
+                    #ax.text(0.05,.05, 'asymptote', transform=ax.transAxes, fontsize=6, color='r')
+                    ax.set_ylabel('discrimination\nthreshold ($^{\circ}$)')
+                else:
+                    ax.semilogx(nx, ypred[0], '--', lw=1.5, color='k')
+                #ax.plot([nx[0],nx[-1]], [par[0], par[0]], color='r', lw=0.5)
+                ax.set_ylim([0, 2.])
             else:
-                ax.semilogx(nx, ypred[0], '--', lw=1.5, color='k')
-            #ax.plot([nx[0],nx[-1]], [par[0], par[0]], color='r', lw=0.5)
-            ax.set_ylim([0, 2])
-        else:
-            if k==2:
-                ax.set_ylabel('inverse MSE\n (1/deg$^2$)')
-            #ax.set_ylim([0,300])
-            #ax.set_ylim([0, 1])
-        if k==0 or k==2:
-            ax.text(-.75, 1.075, string.ascii_lowercase[iplot], transform=ax.transAxes,  size=12)
-            #ax.text(-.25, 1.075, 'Asymptotics', transform=ax.transAxes,  size=14)
-            #ax.set_xlim([10, 1000])
-            ax.set_xlim([10,1000])
-            ax.set_xlabel('trials / deg')
-            ax.set_xticks([10,100,1000])
-        else:
-            ax.set_xlim([100, 20000])
-            ax.set_xticks([100,1000,10000])
-            ax.set_xlabel('neurons')
-        if k==1:
-            x0 = xinit
-            y0 -= dy
-        else:
-            x0+=dx
+                if k==2:
+                    ax.set_ylabel('inverse MSE\n (1/deg$^2$)')
+                #ax.set_ylim([0,300])
+                #ax.set_ylim([0, 1])
+            if k==0 or k==2:
+                ax.text(-.75, 1.075, string.ascii_lowercase[iplott2[kk][k//2]], transform=ax.transAxes,  size=12)
+                #ax.text(-.25, 1.075, 'Asymptotics', transform=ax.transAxes,  size=14)
+                #ax.set_xlim([10, 1000])
+                ax.set_xlim([10,1000])
+                ax.set_xlabel('trials / deg')
+                ax.set_xticks([10,100,1000])
+            else:
+                ax.set_xlim([100, 20000])
+                ax.set_xticks([100,1000,10000])
+                ax.set_xlabel('neurons')
 
     if save_figure:
         if not os.path.isdir(os.path.join(saveroot, 'figs')):
@@ -1191,3 +1179,27 @@ def fig6(dataroot, saveroot, save_figure=False):
         fig.savefig(os.path.join(saveroot, 'figs/fig6.pdf'), bbox_inches='tight')
 
     return fig
+
+# if kk==0:
+#     y0 = .43
+#     dy = .5
+#     dx = .33
+#     xs = .1
+#     ys = xs * yratio
+#     ax = fig.add_axes([x0, y0, xs+.015, ys])
+#     im = ax.pcolor(X, Y, Z.mean(axis=-1), norm=LogNorm())
+#     ax.add_patch(Polygon([[X[0,0]-3e2,Y[0,0]-2e3],[X[0,0]-3e2,Y[0,pp]],
+#                          [X[pp,0],Y[0,0]-2e3]], #[X[pp,0],Y[0,pp]]
+#                          fill=None, lw=2, ls='--'))
+#     ax.text(-.35,1.03,'discrimination threshold ($^\circ$)', fontsize=6, transform=ax.transAxes)
+#     ax.set_xscale('log')
+#     ax.set_yscale('log')
+#     ax.set_xlabel('trials / deg ')
+#     ax.set_ylabel('neurons')
+#     cbar = fig.colorbar(im, ticks=[0.5, 1, 2])
+#     cbar.ax.set_yticklabels(['0.5', '1.0', '2.0'])
+#     ax.text(-.6, 1.0, string.ascii_lowercase[iplot], transform=ax.transAxes,
+#                     size=12)
+#
+#
+#

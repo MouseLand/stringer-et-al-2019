@@ -86,71 +86,6 @@ def linear_decoders(dataroot, saveroot, save_figure=False):
 
     return fig
 
-def asymptotics(saveroot, save_figure=False):
-    rc('font', **{'size': 6})#, 'family':'sans-serif'})#,'sans-serif':['Helvetica']})
-
-    fig = plt.figure(figsize=(5,2),facecolor='w',frameon=True, dpi=300)
-    yratio = 5/2
-
-    # show neurons and stims for linear
-    d = np.load(os.path.join(saveroot, 'linear_decoder_asymp.npy'), allow_pickle=True).item()
-    Elin = d['E']
-    npoplin = d['npop']
-    Estim = d['E2']
-    nstim = d['nstim']
-
-    # show neurons for independent
-    d = np.load(os.path.join(saveroot, 'independent_decoder_asymp.npy'), allow_pickle=True).item()
-    E = d['E']
-    npop = d['npop']
-
-    berry = [.7,.2,.5]
-    grn = [0,.5,0]
-
-    cols = [berry, grn, grn]
-    for k in range(3):
-        ax = fig.add_axes([0.12+k*.3, 0.21, .18, .18*yratio])
-        if k==0:
-            mux = npop.mean(axis=-1)
-            muy = E[:,0,:].mean(axis=-1)
-            semy = E[:,0,:].std(axis=-1)/(npop.shape[-1]-1)**.5
-            ax.text(-.5,1.25,'Scaling with # neurons',size=8, fontstyle='italic', transform=ax.transAxes)
-            ax.set_title('Independent decoder', color=cols[k])
-        elif k==1:
-            mux = npoplin.mean(axis=-1)
-            muy = Elin[:,0,:].mean(axis=-1)
-            semy = Elin[:,0,:].std(axis=-1)/(npop.shape[-1]-1)**.5
-            ax.set_title('Linear decoder', color=cols[k])
-        else:
-            mux = nstim.mean(axis=-1)
-            muy = Estim.mean(axis=-1)
-            semy = Estim.std(axis=-1)/(npop.shape[-1]-1)**.5
-            ax.text(-.3,1.25,'Scaling with # stimuli',size=8, fontstyle='italic', transform=ax.transAxes)
-            ax.set_title('Linear decoder', color=cols[k])
-
-        ax.semilogx(mux, muy, color=cols[k], linewidth=0.5)
-        alpha,beta,r2 = utils.fit_asymptote(mux[::-1][-12:], muy[::-1][-12:])
-        ax.semilogx(mux, alpha + beta / np.sqrt(mux), '--', lw=0.5, color='k')
-        ax.text(.5,.6, r'$\alpha + \frac{\beta}{\sqrt{N}}$', transform=ax.transAxes,size=10)
-        ax.text(.5,.4,r'$\alpha$=%2.2f$^{\circ}$'%alpha, transform=ax.transAxes)
-        ax.text(.5,.3, r'$\beta$=%2.0f$^{\circ}$'%beta, transform=ax.transAxes)
-        ax.set_ylim([0, 15])
-        ax.set_ylabel(r'decoding error ($^\circ$)')
-        if k<2:
-            ax.set_xlabel('# of neurons')
-        else:
-            ax.set_xlabel('# of stimuli')
-        ax.tick_params(axis='y')
-        ax.fill_between(mux, muy-semy, muy+semy, facecolor=cols[k], alpha=0.5)
-        ax.text(-0.5, 1.08, string.ascii_lowercase[k], transform=ax.transAxes, size=12);
-
-    if save_figure:
-        if not os.path.isdir(os.path.join(saveroot, 'figs')):
-            os.mkdir(os.path.join(saveroot, 'figs'))
-        fig.savefig(os.path.join(saveroot, 'figs/supp_asymp.pdf'))
-
-    return fig
-
 def stim_props(saveroot, save_figure=False):
     rc('font', **{'size': 6})#, 'family':'sans-serif'})#,'sans-serif':['Helvetica']})
 
@@ -360,7 +295,7 @@ def stim_props(saveroot, save_figure=False):
     ax.set_yticks([])
     ax.set_xticks([])
     ax.set_title('Correlation between neural patterns', fontsize=6)
-    ax.text(-.5, 1.05, 'I', size=12, transform=ax.transAxes)
+    ax.text(-.5, 1.05, 'g', size=12, transform=ax.transAxes)
     ax.set_xlabel('trials sorted by angle')
     ax.set_ylabel('trials sorted by angle')
     ax2=fig.add_axes([xpos[0]+bz*1.1, ypos[0]+bz*.5, .01,.1])
@@ -374,8 +309,8 @@ def stim_props(saveroot, save_figure=False):
     ax.set_xticks([0,90,180,270,360])
     ax.set_xticklabels(['-90','0','90','180','270'])
     ax.set_xlabel('stimulus angle difference ($^\circ$)')
-    ax.text(-.7, 1.05, 'J', size=12, transform=ax.transAxes)
-    ax.text(1.8, 1.05, 'K', size=12, transform=ax.transAxes)
+    ax.text(-.7, 1.05, 'h', size=12, transform=ax.transAxes)
+    ax.text(1.8, 1.05, 'i', size=12, transform=ax.transAxes)
     ax.set_ylabel('correlation between \nneural patterns')
     ax.set_ylim(-.1,.3)
     ax.set_yticks(np.arange(-.1,.4,.1))
@@ -572,17 +507,25 @@ def stim_distances(saveroot, save_figure=False):
 
     return fig
 
-def pc_errors(saveroot, save_figure=False):
+def pc_errors(dataroot, saveroot, save_figure=False):
     rc('font', **{'size': 6})#, 'family':'sans-serif'})#,'sans-serif':['Helvetica']})
 
-    fig = plt.figure(figsize=(5,3),facecolor='w',frameon=True, dpi=300)
-    yratio = 5/3
+    fig = plt.figure(figsize=(5,4.5),facecolor='w',frameon=True, dpi=300)
+    yratio = 5/4.5
     bz = .16
     xpos = [.1, .4, .75]
-    ypos = [.15, .6]
+    ypos = [.1, .43, .76]
     iplot=0
     labx = -0.62
     laby = 1.08
+
+    d = np.load(os.path.join(saveroot, 'independent_decoder_and_gain.npy'), allow_pickle=True).item()
+    E = d['E']
+    dat = np.load(os.path.join(dataroot, 'gratings_static_TX39_2019_05_02_1.npy'), allow_pickle=True).item()
+    sresp, istim, itrain, itest = utils.compile_resp(dat)
+    apred, error, ypred, logL, SNR, theta_pref, A, B, B2 = decoders.independent_decoder(sresp, istim, itrain, itest, fitgain=True)
+    print(np.median(np.abs(error)) * 180/np.pi)
+    Apred = A.T @ B2
 
     d = np.load(os.path.join(saveroot, 'log2d_model.npy'), allow_pickle=True).item()
     merrors, errors_ex, stims_ex = d['merror'], d['errors_ex'], d['stims_ex']
@@ -591,6 +534,59 @@ def pc_errors(saveroot, save_figure=False):
     errors, atrues, apreds, nPC = d['errors'], d['atrues'], d['apreds'], d['nPC']
 
     dlin = np.load(os.path.join(saveroot, 'linear_decoder_asymp.npy'), allow_pickle=True).item()
+
+    grn = [1,.2,0]
+    ax = fig.add_axes([xpos[0],ypos[2],bz,bz*yratio])
+    ax.text(labx, laby, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
+    ax.text(-.35,1., 'independent decoder\n with multiplicative gain', size=6, transform=ax.transAxes)
+    ax.axis('off')
+    iplot += 1
+    isort=np.argsort(SNR)[::-1]
+    iangle = np.arange(0,32,1,int) * 360/32
+    xs = 0.1
+    dx = 0.11
+    dy = dx * yratio
+    for k,idx in enumerate([100,3000,5090,50]):
+        ax=fig.add_axes([xpos[0]-.04+(k%2)*dx, ypos[2]-.06+dy*((3-k)//2), xs,xs*yratio])
+        ax.plot(iangle, Apred[isort[idx]], color='k', lw=1)
+        ax.plot(iangle, Apred[isort[idx]]*2, '--', color='r', lw=1)
+        ax.set_ylim([-2,5.5])
+        ax.axis('off')
+        ax.text(0,-.08,'neuron %d'%(k+1), transform=ax.transAxes)
+        if k==0:
+            ax.text(0.5,.7,'"high gain"', color='r', transform=ax.transAxes)
+        elif k==2:
+            ax.text(-.3,0.55,'tuning curves', transform=ax.transAxes, rotation=90)
+
+    ax = fig.add_axes([xpos[1],ypos[2],bz,bz*yratio])
+    ax.scatter(istim[itest]* 180/np.pi, apred*180/np.pi, marker='.', alpha=0.5,
+                 s=2, color = grn, edgecolors='none')
+    ax.set_xlabel(r'true angle ($^\circ$)')
+    ax.set_ylabel(r'decoded angle ($^\circ$)')
+    ax.set_xticks([0, 180, 360])
+    ax.set_yticks([0, 180, 360])
+    ax.text(-.3,1.1,'Test trials',size=6, transform=ax.transAxes)
+    ax.text(labx, laby, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
+    iplot+=1
+
+    ax = fig.add_axes([xpos[2],ypos[2],bz,bz*yratio])
+    nb=plt.hist(error* 180/np.pi, np.linspace(0,25, 21), color = grn)
+    merror = np.median(np.abs(error))*180/np.pi
+    ax.scatter(merror, nb[0].max()*1.05, marker='v',color=[0,.0,0])
+    ax.text(merror-2, nb[0].max()*1.13, '%2.2f$^\circ$ = median error'%merror,fontweight='bold')
+    ax.set_xlabel(r'absolute angle error ($^\circ$)')
+    ax.set_ylabel('trial counts')
+    ax.set_xlim([0,20])
+    ax.text(labx, laby, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
+
+    axins = fig.add_axes([xpos[2]+bz*.95, ypos[2]+bz*.5, .06,.06*yratio])
+    axins.hist(E[1], 3, color=grn)
+    axins.set_xlabel('median error')
+    axins.set_ylabel('recordings')
+    axins.set_yticks([0,3])
+    axins.set_xticks([2,2.5])
+    #axins.set_xlim([2,3.2])
+    iplot+=1
 
     ax = fig.add_axes([xpos[0],ypos[1],bz,bz*yratio])
     ax.text(-.3,1.1,
@@ -601,12 +597,10 @@ def pc_errors(saveroot, save_figure=False):
     ax.text(-.0,.8,
             r'          $ - \log \, Z(\mathbf{a}, \mathbf{b}, \mathbf{r})$',
             transform=ax.transAxes)
-
-
-    grn = [0.5,0.1,0]
-
+    grn = [0.3,0.8,0]
     ax.text(labx, laby, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
     ax.axis('off')
+
     ax = fig.add_axes([xpos[0]-.03,ypos[1]-.05,bz,bz*yratio])
     nv = 1
     nn = 10
@@ -642,12 +636,12 @@ def pc_errors(saveroot, save_figure=False):
     ax.set_xlim([0,20])
     ax.text(labx, laby, string.ascii_lowercase[iplot], transform=ax.transAxes, size=12)
 
-    axins = fig.add_axes([xpos[2]+bz*.95, ypos[1]+bz*.7, .06,.06*yratio])
+    axins = fig.add_axes([xpos[2]+bz*.95, ypos[1]+bz*.5, .06,.06*yratio])
     axins.hist(merrors, 3, color=grn)
     axins.set_xlabel('median error')
     axins.set_ylabel('recordings')
     axins.set_yticks([0,3])
-    axins.set_xlim([2,3.2])
+    #axins.set_xlim([2,3.2])
     iplot+=1
 
     cmap = plt.get_cmap('viridis')
@@ -655,7 +649,7 @@ def pc_errors(saveroot, save_figure=False):
     ax = fig.add_axes([xpos[0],ypos[0],bz,bz*yratio])
     ax.text(labx, laby,string.ascii_lowercase[iplot],size=12, transform=ax.transAxes)
     ax.axis('off')
-    ax = fig.add_axes([xpos[0]-.03,ypos[0]-.05,bz,bz*yratio])
+    ax = fig.add_axes([xpos[0]-.03,ypos[0]-.02,bz,bz*yratio])
     nv = 7
     nn = 10
     npc = 4
